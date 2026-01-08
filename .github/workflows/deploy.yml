@@ -46,6 +46,7 @@ jobs:
           APP_DIR: ${{ secrets.EC2_APP_DIR || '/home/ec2-user/lms-bot' }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          REPO_URL: ${{ github.event.repository.clone_url }}
         run: |
           if [ -z "$EC2_HOST" ] || [ -z "$EC2_USER" ]; then
             echo "❌ Error: EC2_HOST or EC2_USER is empty"
@@ -58,15 +59,71 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
             $EC2_USER@$EC2_HOST \
             "export APP_DIR='${APP_DIR:-/home/ec2-user/lms-bot}' && \
+             export REPO_URL='$REPO_URL' && \
              export GROQ_KEY='$GROQ_API_KEY' && \
              export PINECONE_KEY='$PINECONE_API_KEY' && \
+             export EC2_USER_NAME='$EC2_USER' && \
              bash" << 'DEPLOY_SCRIPT'
           set -e
-          cd "$APP_DIR"
           
-          echo "🔄 Pulling latest code..."
-          git fetch origin
-          git reset --hard origin/main
+          echo "🚀 Starting automated setup and deployment..."
+          
+          # Detect OS and install prerequisites
+          if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            OS=$ID
+          else
+            echo "⚠️  Cannot detect OS, assuming Amazon Linux"
+            OS="amzn"
+          fi
+          
+          echo "📦 Installing system prerequisites for $OS..."
+          
+          if [ "$OS" = "amzn" ] || [ "$OS" = "rhel" ] || [ "$OS" = "centos" ]; then
+            # Amazon Linux / RHEL / CentOS
+            sudo yum update -y
+            sudo yum install -y git python3.11 python3.11-pip python3.11-devel gcc gcc-c++ make cmake
+            # Try to install ffmpeg if available
+            sudo yum install -y ffmpeg ffmpeg-devel 2>/dev/null || echo "⚠️  ffmpeg not available in default repos, skipping"
+          elif [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+            # Ubuntu / Debian
+            sudo apt-get update -y
+            sudo apt-get install -y git python3.11 python3.11-venv python3.11-dev python3-pip build-essential gcc g++ make cmake
+            sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev 2>/dev/null || echo "⚠️  ffmpeg installation failed, continuing"
+          else
+            echo "⚠️  Unknown OS, trying to install basic packages..."
+            sudo yum install -y git python3 python3-pip 2>/dev/null || sudo apt-get install -y git python3 python3-pip 2>/dev/null || true
+          fi
+          
+          # Verify Python is available
+          if command -v python3.11 &> /dev/null; then
+            PYTHON_CMD=python3.11
+          elif command -v python3 &> /dev/null; then
+            PYTHON_CMD=python3
+          else
+            echo "❌ Python not found!"
+            exit 1
+          fi
+          
+          echo "✅ Python found: $PYTHON_CMD"
+          $PYTHON_CMD --version
+          
+          # Create directory if it doesn't exist
+          if [ ! -d "$APP_DIR" ]; then
+            echo "📁 Creating application directory: $APP_DIR"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+            
+            echo "📥 Cloning repository (first time setup)..."
+            git clone "$REPO_URL" .
+          else
+            echo "📂 Directory exists, updating code..."
+            cd "$APP_DIR"
+            
+            echo "🔄 Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
+          fi
           
           echo "📝 Creating/updating .env file..."
           SECRET_RANDOM=$(openssl rand -hex 32)
@@ -111,20 +168,58 @@ jobs:
           EOF
           chmod 600 .env
           
+          echo "📦 Setting up virtual environment..."
+          if [ ! -d "venv" ]; then
+            echo "🐍 Creating virtual environment..."
+            $PYTHON_CMD -m venv venv
+          fi
+          
           echo "📦 Activating virtual environment..."
           source venv/bin/activate
           
           echo "📥 Installing/updating dependencies..."
-          pip install --upgrade pip
+          pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
           
-          echo "🔄 Restarting application service..."
+          echo "⚙️  Setting up systemd service..."
+          # Use the EC2 user from environment
+          SERVICE_USER=${EC2_USER_NAME:-$(whoami)}
+          # Create systemd service file
+          sudo tee /etc/systemd/system/lms-bot.service > /dev/null << SERVICE_EOF
+          [Unit]
+          Description=LMS Bot FastAPI Application
+          After=network.target
+          
+          [Service]
+          Type=simple
+          User=$SERVICE_USER
+          Group=$SERVICE_USER
+          WorkingDirectory=$APP_DIR
+          Environment="PATH=$APP_DIR/venv/bin"
+          ExecStart=$APP_DIR/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8005 --workers 4
+          Restart=always
+          RestartSec=10
+          StandardOutput=journal
+          StandardError=journal
+          
+          # Security settings
+          NoNewPrivileges=true
+          PrivateTmp=true
+          
+          [Install]
+          WantedBy=multi-user.target
+          SERVICE_EOF
+          
+          # Reload systemd and enable/start service
           sudo systemctl daemon-reload
-          sudo systemctl restart lms-bot || echo "⚠️  Service might not exist yet, continuing..."
+          sudo systemctl enable lms-bot
+          sudo systemctl restart lms-bot
           
           echo "✅ Deployment completed!"
           echo "📊 Service status:"
-          sudo systemctl status lms-bot --no-pager || echo "⚠️  Service status unavailable"
+          sudo systemctl status lms-bot --no-pager -l || echo "⚠️  Service status unavailable"
+          
+          echo "🌐 Application should be available at: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'EC2_IP'):8005"
           DEPLOY_SCRIPT
 
       - name: Health Check
