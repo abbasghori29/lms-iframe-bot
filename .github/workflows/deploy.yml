@@ -181,6 +181,24 @@ jobs:
           pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
           
+          echo "📚 Checking vector store..."
+          if [ ! -d "faiss_index" ]; then
+            echo "⚠️  Vector store (faiss_index) not found!"
+            if [ -f "FIC-CSI-EN-2025.pdf" ] && [ -f "PDF complet de CSI.pdf" ]; then
+              echo "📄 PDF files found, creating vector store (this will take several minutes)..."
+              echo "   This is a one-time process that creates embeddings from PDFs."
+              python train_vector_db.py || echo "⚠️  Vector store creation failed, but continuing deployment"
+            else
+              echo "❌ ERROR: Vector store not found and PDF files are missing!"
+              echo "   The chatbot will not work without the vector store."
+              echo "   You need to either:"
+              echo "   1. Upload the faiss_index directory to EC2, or"
+              echo "   2. Upload PDF files and run: python train_vector_db.py"
+            fi
+          else
+            echo "✅ Vector store found"
+          fi
+          
           echo "⚙️  Setting up systemd service..."
           # Use the EC2 user from environment
           SERVICE_USER=${EC2_USER_NAME:-$(whoami)}
@@ -219,12 +237,41 @@ jobs:
           echo "📊 Service status:"
           sudo systemctl status lms-bot --no-pager -l || echo "⚠️  Service status unavailable"
           
-          echo "📋 Checking service logs (last 20 lines):"
-          sudo journalctl -u lms-bot -n 20 --no-pager || echo "⚠️  Could not read logs"
+          echo ""
+          echo "📋 Checking service logs (last 30 lines) for errors:"
+          sudo journalctl -u lms-bot -n 30 --no-pager || echo "⚠️  Could not read logs"
           
+          echo ""
           echo "🔍 Checking if port 8005 is listening:"
           sudo netstat -tulpn | grep 8005 || sudo ss -tulpn | grep 8005 || echo "⚠️  Port 8005 not found in listening ports"
           
+          echo ""
+          echo "📁 Checking vector store directory:"
+          if [ -d "$APP_DIR/faiss_index" ]; then
+            echo "✅ Vector store directory exists"
+            ls -la "$APP_DIR/faiss_index" | head -5
+          else
+            echo "❌ WARNING: Vector store directory (faiss_index) not found!"
+            echo "   The chatbot will not work without the vector store."
+            echo "   You need to either:"
+            echo "   1. Upload faiss_index directory to EC2, or"
+            echo "   2. Run train_vector_db.py on EC2 to create it"
+          fi
+          
+          echo ""
+          echo "🔑 Checking environment variables:"
+          if [ -f "$APP_DIR/.env" ]; then
+            echo "✅ .env file exists"
+            if grep -q "GROQ_API_KEY=" "$APP_DIR/.env" && ! grep -q "GROQ_API_KEY=$" "$APP_DIR/.env" && ! grep -q "GROQ_API_KEY=your-" "$APP_DIR/.env"; then
+              echo "✅ GROQ_API_KEY appears to be set"
+            else
+              echo "❌ WARNING: GROQ_API_KEY may not be set correctly"
+            fi
+          else
+            echo "❌ .env file not found!"
+          fi
+          
+          echo ""
           echo "🌐 Application should be available at: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'EC2_IP'):8005"
           echo ""
           echo "⚠️  IMPORTANT: Make sure your EC2 Security Group allows inbound traffic on port 8005!"

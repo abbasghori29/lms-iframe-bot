@@ -59,7 +59,7 @@ htmlcov/
 alembic/versions/*.pyc
 
 # Vector databases and memory
-faiss_index/
+# faiss_index/  # Commented out - vector store is now included in repo for deployment
 memory_index/
 user_memories/
 
