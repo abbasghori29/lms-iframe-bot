@@ -13,19 +13,6 @@
             z-index: 999999;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        
-        /* Mobile: Keep widget container normal, only iframe goes full screen */
-        @media (max-width: 768px) {
-            #cafs-chatbot-widget {
-                position: fixed !important;
-                bottom: 16px !important;
-                right: 20px !important;
-                top: auto !important;
-                left: auto !important;
-                width: auto !important;
-                height: auto !important;
-            }
-        }
 
         /* Toggle Button */
         #cafs-chatbot-toggle {
@@ -116,11 +103,11 @@
         /* Iframe Container */
         #cafs-chatbot-frame-container {
             position: absolute;
-            bottom: 80px;
-            right: 8px;
+            bottom: 88px;
+            right: 0;
             width: 380px;
             height: 580px;
-            max-height: calc(100vh - 120px);
+            max-height: calc(100vh - 112px);
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
@@ -138,28 +125,6 @@
             pointer-events: all;
         }
         
-        /* Mobile: Only iframe container goes full screen, toggle stays in corner */
-        @media (max-width: 768px) {
-            #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 16px !important;
-                box-shadow: none !important;
-                transform: none !important;
-                transform-origin: center !important;
-            }
-            
-            #cafs-chatbot-frame-container.open {
-                transform: none !important;
-            }
-        }
 
         #cafs-chatbot-frame {
             width: 100%;
@@ -234,7 +199,7 @@
             #cafs-chatbot-frame-container {
                 width: 340px;
                 height: 540px;
-                max-height: calc(100vh - 100px);
+                max-height: calc(100vh - 112px);
                 border-radius: 18px;
                 right: 4px;
             }
@@ -247,12 +212,8 @@
         /* Tablets / Small screens */
         @media (max-width: 768px) {
             #cafs-chatbot-widget {
-                bottom: 16px !important;
-                right: 20px !important;
-                top: auto !important;
-                left: auto !important;
-                width: auto !important;
-                height: auto !important;
+                bottom: 16px;
+                right: 20px;
             }
 
             #cafs-chatbot-toggle {
@@ -266,28 +227,24 @@
             }
 
             #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 16px !important;
-                box-shadow: none !important;
-                transform: none !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+                transform: none;
             }
 
             #cafs-chatbot-frame-container.open {
-                transform: none !important;
+                transform: none;
             }
 
             #cafs-chatbot-frame {
-                border-radius: 16px;
-                width: 100% !important;
-                height: 100% !important;
+                border-radius: 0;
             }
 
             .toggle-tooltip {
@@ -302,28 +259,20 @@
             }
 
             #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 12px !important;
-                box-shadow: none !important;
-                transform: none !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+                transform: none;
             }
             
             #cafs-chatbot-frame-container.open {
-                transform: none !important;
-            }
-            
-            #cafs-chatbot-frame {
-                border-radius: 12px;
-                width: 100% !important;
-                height: 100% !important;
+                transform: none;
             }
         }
 
@@ -345,28 +294,24 @@
             }
 
             #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 12px !important;
-                box-shadow: none !important;
-                transform: none !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+                transform: none;
             }
             
             #cafs-chatbot-frame-container.open {
-                transform: none !important;
+                transform: none;
             }
 
             #cafs-chatbot-frame {
-                border-radius: 12px;
-                width: 100% !important;
-                height: 100% !important;
+                border-radius: 0;
             }
         }
 
@@ -388,28 +333,24 @@
             }
 
             #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                transform: none !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+                transform: none;
             }
             
             #cafs-chatbot-frame-container.open {
-                transform: none !important;
+                transform: none;
             }
 
             #cafs-chatbot-frame {
                 border-radius: 0;
-                width: 100% !important;
-                height: 100% !important;
             }
         }
 
@@ -516,29 +457,14 @@
             
             toggle.classList.toggle('open', isOpen);
             container.classList.toggle('open', isOpen);
-            
-            // On mobile, hide toggle button when chat is open
-            if (window.innerWidth <= 768) {
-                if (isOpen) {
-                    toggle.style.display = 'none';
-                } else {
-                    toggle.style.display = 'flex';
-                }
-            }
         }
 
         // Listen for close message from iframe
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'closeChatbot') {
                 isOpen = false;
-                const toggle = document.getElementById('cafs-chatbot-toggle');
-                const container = document.getElementById('cafs-chatbot-frame-container');
-                toggle.classList.remove('open');
-                container.classList.remove('open');
-                // Show toggle button again on mobile
-                if (window.innerWidth <= 768) {
-                    toggle.style.display = 'flex';
-                }
+                document.getElementById('cafs-chatbot-toggle').classList.remove('open');
+                document.getElementById('cafs-chatbot-frame-container').classList.remove('open');
             }
         });
 
