@@ -47,15 +47,35 @@
             margin: 0;
             padding: 0;
         }
+        
+        /* Mobile: Ensure full viewport size */
+        @media (max-width: 768px) {
+            html, body {
+                height: 100vh !important;
+                width: 100vw !important;
+                overflow: hidden !important;
+            }
+        }
 
         .chat-container {
             display: flex;
             flex-direction: column;
             height: 100%;
+            width: 100%;
             background: var(--bg-dark);
             border-radius: 20px;
             overflow: hidden;
             box-shadow: var(--shadow);
+        }
+        
+        /* Mobile: Keep rounded corners but full screen */
+        @media (max-width: 768px) {
+            .chat-container {
+                border-radius: 16px !important;
+                box-shadow: none !important;
+                height: 100vh !important;
+                width: 100vw !important;
+            }
         }
 
         /* Header */
@@ -1041,7 +1061,10 @@
         /* Extra small screens / Mobile */
         @media (max-width: 480px) {
             .chat-container {
-                border-radius: 0;
+                border-radius: 12px !important;
+                box-shadow: none !important;
+                height: 100vh !important;
+                width: 100vw !important;
             }
             
             .chat-header {

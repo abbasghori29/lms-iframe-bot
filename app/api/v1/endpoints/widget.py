@@ -72,22 +72,17 @@ async def get_embed_script(request: Request):
     // CAFS Chatbot Embed Script - Responsive Version
     if (document.getElementById('cafs-chatbot-container')) return;
     
-    // Calculate responsive dimensions (narrower, taller)
+    // Calculate responsive dimensions (full screen on mobile)
     function getResponsiveDimensions() {{
         var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
         var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
         
         var width, height;
         
-        if (vw <= 360) {{
-            width = Math.min(300, vw - 20);
-            height = Math.min(500, vh - 20);
-        }} else if (vw <= 480) {{
-            width = Math.min(320, vw - 24);
-            height = Math.min(540, vh - 24);
-        }} else if (vw <= 768) {{
-            width = Math.min(340, vw - 32);
-            height = Math.min(580, vh - 40);
+        // Mobile: Full screen
+        if (vw <= 768) {{
+            width = vw;
+            height = vh;
         }} else if (vw <= 1024) {{
             width = 360;
             height = Math.min(600, vh - 40);
@@ -108,7 +103,13 @@ async def get_embed_script(request: Request):
     var iframe = document.createElement('iframe');
     iframe.id = 'cafs-chatbot-iframe';
     iframe.src = '{embed_url}';
-    iframe.style.cssText = 'width:' + dims.width + 'px;height:' + dims.height + 'px;border:none;background:transparent;';
+    // Mobile: Full screen positioning
+    if (dims.width >= window.innerWidth * 0.9) {{
+        iframe.style.cssText = 'width:100vw;height:100vh;border:none;background:transparent;position:fixed;top:0;left:0;z-index:999999;';
+        container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999999;background:transparent;';
+    }} else {{
+        iframe.style.cssText = 'width:' + dims.width + 'px;height:' + dims.height + 'px;border:none;background:transparent;';
+    }}
     iframe.allow = 'microphone';
     iframe.title = 'CAFS Chatbot';
     

@@ -13,6 +13,19 @@
             z-index: 999999;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
+        
+        /* Mobile: Keep widget container normal, only iframe goes full screen */
+        @media (max-width: 768px) {
+            #cafs-chatbot-widget {
+                position: fixed !important;
+                bottom: 16px !important;
+                right: 20px !important;
+                top: auto !important;
+                left: auto !important;
+                width: auto !important;
+                height: auto !important;
+            }
+        }
 
         /* Toggle Button */
         #cafs-chatbot-toggle {
@@ -124,6 +137,29 @@
             transform: translateY(0) scale(1);
             pointer-events: all;
         }
+        
+        /* Mobile: Only iframe container goes full screen, toggle stays in corner */
+        @media (max-width: 768px) {
+            #cafs-chatbot-frame-container {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border-radius: 16px !important;
+                box-shadow: none !important;
+                transform: none !important;
+                transform-origin: center !important;
+            }
+            
+            #cafs-chatbot-frame-container.open {
+                transform: none !important;
+            }
+        }
 
         #cafs-chatbot-frame {
             width: 100%;
@@ -211,8 +247,12 @@
         /* Tablets / Small screens */
         @media (max-width: 768px) {
             #cafs-chatbot-widget {
-                bottom: 16px;
-                right: 20px;
+                bottom: 16px !important;
+                right: 20px !important;
+                top: auto !important;
+                left: auto !important;
+                width: auto !important;
+                height: auto !important;
             }
 
             #cafs-chatbot-toggle {
@@ -226,16 +266,28 @@
             }
 
             #cafs-chatbot-frame-container {
-                width: 320px;
-                height: calc(100vh - 100px);
-                max-height: 520px;
-                bottom: 70px;
-                border-radius: 16px;
-                right: 4px;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border-radius: 16px !important;
+                box-shadow: none !important;
+                transform: none !important;
+            }
+
+            #cafs-chatbot-frame-container.open {
+                transform: none !important;
             }
 
             #cafs-chatbot-frame {
                 border-radius: 16px;
+                width: 100% !important;
+                height: 100% !important;
             }
 
             .toggle-tooltip {
@@ -250,11 +302,28 @@
             }
 
             #cafs-chatbot-frame-container {
-                width: 300px;
-                max-width: calc(100vw - 40px);
-                height: calc(100vh - 100px);
-                max-height: 500px;
-                right: 4px;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border-radius: 12px !important;
+                box-shadow: none !important;
+                transform: none !important;
+            }
+            
+            #cafs-chatbot-frame-container.open {
+                transform: none !important;
+            }
+            
+            #cafs-chatbot-frame {
+                border-radius: 12px;
+                width: 100% !important;
+                height: 100% !important;
             }
         }
 
@@ -276,18 +345,28 @@
             }
 
             #cafs-chatbot-frame-container {
-                position: fixed;
-                width: calc(100vw - 32px);
-                max-width: 320px;
-                height: calc(100vh - 90px);
-                max-height: 480px;
-                right: 2px;
-                bottom: 66px;
-                border-radius: 16px;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border-radius: 12px !important;
+                box-shadow: none !important;
+                transform: none !important;
+            }
+            
+            #cafs-chatbot-frame-container.open {
+                transform: none !important;
             }
 
             #cafs-chatbot-frame {
-                border-radius: 16px;
+                border-radius: 12px;
+                width: 100% !important;
+                height: 100% !important;
             }
         }
 
@@ -309,17 +388,28 @@
             }
 
             #cafs-chatbot-frame-container {
-                width: calc(100vw - 28px);
-                max-width: 300px;
-                height: calc(100vh - 80px);
-                max-height: 450px;
-                bottom: 60px;
-                border-radius: 14px;
-                right: 2px;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                transform: none !important;
+            }
+            
+            #cafs-chatbot-frame-container.open {
+                transform: none !important;
             }
 
             #cafs-chatbot-frame {
-                border-radius: 14px;
+                border-radius: 0;
+                width: 100% !important;
+                height: 100% !important;
             }
         }
 
@@ -426,14 +516,29 @@
             
             toggle.classList.toggle('open', isOpen);
             container.classList.toggle('open', isOpen);
+            
+            // On mobile, hide toggle button when chat is open
+            if (window.innerWidth <= 768) {
+                if (isOpen) {
+                    toggle.style.display = 'none';
+                } else {
+                    toggle.style.display = 'flex';
+                }
+            }
         }
 
         // Listen for close message from iframe
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'closeChatbot') {
                 isOpen = false;
-                document.getElementById('cafs-chatbot-toggle').classList.remove('open');
-                document.getElementById('cafs-chatbot-frame-container').classList.remove('open');
+                const toggle = document.getElementById('cafs-chatbot-toggle');
+                const container = document.getElementById('cafs-chatbot-frame-container');
+                toggle.classList.remove('open');
+                container.classList.remove('open');
+                // Show toggle button again on mobile
+                if (window.innerWidth <= 768) {
+                    toggle.style.display = 'flex';
+                }
             }
         });
 
