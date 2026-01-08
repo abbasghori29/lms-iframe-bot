@@ -1,0 +1,103 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          APP_DIR: ${{ secrets.EC2_APP_DIR }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << ENDSSH
+            set -e
+            cd ${APP_DIR:-/home/ec2-user/lms-bot}
+            
+            echo "🔄 Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            echo "📝 Creating/updating .env file..."
+            cat > .env << EOF
+            # Application Settings
+            PROJECT_NAME=LMS Bot
+            VERSION=0.1.0
+            DEBUG=False
+            HOST=0.0.0.0
+            PORT=8005
+            
+            # Database
+            DATABASE_URL=sqlite:///./app.db
+            DB_ECHO=False
+            
+            # Security
+            SECRET_KEY=change-this-in-production-$(openssl rand -hex 32)
+            ALGORITHM=HS256
+            ACCESS_TOKEN_EXPIRE_MINUTES=30
+            
+            # CORS
+            BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8005"]
+            
+            # Logging
+            LOG_LEVEL=INFO
+            LOG_FORMAT=json
+            
+            # LLM / AI
+            GROQ_API_KEY=${GROQ_API_KEY}
+            VECTOR_STORE_PATH=faiss_index
+            EMBEDDING_API_URL=https://lamhieu-lightweight-embeddings.hf.space/v1/embeddings
+            EMBEDDING_MODEL=bge-m3
+            
+            # Pinecone Vector Database
+            PINECONE_API_KEY=${PINECONE_API_KEY}
+            PINECONE_INDEX_NAME=cafs-chatbot-memory
+            PINECONE_CLOUD=aws
+            PINECONE_REGION=us-east-1
+            
+            # Speech-to-Text
+            WHISPER_MODEL=base
+            EOF
+            chmod 600 .env
+            
+            echo "📦 Activating virtual environment..."
+            source venv/bin/activate
+            
+            echo "📥 Installing/updating dependencies..."
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            
+            echo "🔄 Restarting application service..."
+            sudo systemctl daemon-reload
+            sudo systemctl restart lms-bot || echo "⚠️  Service might not exist yet, continuing..."
+            
+            echo "✅ Deployment completed!"
+            echo "📊 Service status:"
+            sudo systemctl status lms-bot --no-pager || echo "⚠️  Service status unavailable"
+          ENDSSH
+
+      - name: Health Check
+        run: |
+          sleep 5
+          curl -f http://${{ secrets.EC2_HOST }}:8005/health || echo "⚠️  Health check failed, but deployment completed"
+

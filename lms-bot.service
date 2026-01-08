@@ -1,0 +1,23 @@
+[Unit]
+Description=LMS Bot FastAPI Application
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/lms-bot
+Environment="PATH=/home/ec2-user/lms-bot/venv/bin"
+ExecStart=/home/ec2-user/lms-bot/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8005 --workers 4
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
