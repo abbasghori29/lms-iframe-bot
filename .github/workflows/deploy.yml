@@ -219,7 +219,18 @@ jobs:
           echo "📊 Service status:"
           sudo systemctl status lms-bot --no-pager -l || echo "⚠️  Service status unavailable"
           
+          echo "📋 Checking service logs (last 20 lines):"
+          sudo journalctl -u lms-bot -n 20 --no-pager || echo "⚠️  Could not read logs"
+          
+          echo "🔍 Checking if port 8005 is listening:"
+          sudo netstat -tulpn | grep 8005 || sudo ss -tulpn | grep 8005 || echo "⚠️  Port 8005 not found in listening ports"
+          
           echo "🌐 Application should be available at: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'EC2_IP'):8005"
+          echo ""
+          echo "⚠️  IMPORTANT: Make sure your EC2 Security Group allows inbound traffic on port 8005!"
+          echo "   - Type: Custom TCP"
+          echo "   - Port: 8005"
+          echo "   - Source: 0.0.0.0/0 (or your specific IP)"
           DEPLOY_SCRIPT
 
       - name: Health Check
@@ -227,6 +238,7 @@ jobs:
         timeout-minutes: 2
         run: |
           echo "⏳ Waiting for application to start..."
-          sleep 10
+          sleep 15
           echo "🏥 Checking application health..."
-          curl -f --max-time 10 --connect-timeout 5 http://${{ secrets.EC2_HOST }}:8005/health && echo "✅ Health check passed!" || echo "⚠️  Health check failed - application may still be starting or port 8005 may not be open in security group"
+          echo "📍 Attempting to connect to http://${{ secrets.EC2_HOST }}:8005/health"
+          curl -v --max-time 10 --connect-timeout 5 http://${{ secrets.EC2_HOST }}:8005/health && echo "✅ Health check passed!" || echo "⚠️  Health check failed - Check: 1) Security group allows port 8005, 2) Service logs for errors, 3) Application is running"
