@@ -223,6 +223,10 @@ jobs:
           DEPLOY_SCRIPT
 
       - name: Health Check
+        continue-on-error: true
+        timeout-minutes: 2
         run: |
-          sleep 5
-          curl -f http://${{ secrets.EC2_HOST }}:8005/health || echo "⚠️  Health check failed, but deployment completed"
+          echo "⏳ Waiting for application to start..."
+          sleep 10
+          echo "🏥 Checking application health..."
+          curl -f --max-time 10 --connect-timeout 5 http://${{ secrets.EC2_HOST }}:8005/health && echo "✅ Health check passed!" || echo "⚠️  Health check failed - application may still be starting or port 8005 may not be open in security group"
