@@ -72,6 +72,30 @@ async def get_embed_script(request: Request):
     // CAFS Chatbot Embed Script - Responsive Version
     if (document.getElementById('cafs-chatbot-container')) return;
     
+    // Calculate responsive dimensions (full screen on mobile)
+    function getResponsiveDimensions() {{
+        var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+        
+        var width, height;
+        
+        // Mobile: Full screen
+        if (vw <= 768) {{
+            width = vw;
+            height = vh;
+        }} else if (vw <= 1024) {{
+            width = 360;
+            height = Math.min(600, vh - 40);
+        }} else {{
+            width = 400;
+            height = Math.min(650, vh - 40);
+        }}
+        
+        return {{ width: width, height: height }};
+    }}
+    
+    var dims = getResponsiveDimensions();
+    
     var container = document.createElement('div');
     container.id = 'cafs-chatbot-container';
     container.style.cssText = 'position:fixed;bottom:0;right:0;z-index:999999;background:transparent;';
@@ -79,12 +103,32 @@ async def get_embed_script(request: Request):
     var iframe = document.createElement('iframe');
     iframe.id = 'cafs-chatbot-iframe';
     iframe.src = '{embed_url}';
-    iframe.style.cssText = 'border:none;background:transparent;';
+    // Mobile: Full screen positioning
+    if (dims.width >= window.innerWidth * 0.9) {{
+        iframe.style.cssText = 'width:100vw;height:100vh;border:none;background:transparent;position:fixed;top:0;left:0;z-index:999999;';
+        container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999999;background:transparent;';
+    }} else {{
+        iframe.style.cssText = 'width:' + dims.width + 'px;height:' + dims.height + 'px;border:none;background:transparent;';
+    }}
     iframe.allow = 'microphone';
     iframe.title = 'CAFS Chatbot';
     
     container.appendChild(iframe);
     document.body.appendChild(container);
+    
+    // Update dimensions on resize
+    var resizeTimeout;
+    window.addEventListener('resize', function() {{
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {{
+            var newDims = getResponsiveDimensions();
+            var iframeEl = document.getElementById('cafs-chatbot-iframe');
+            if (iframeEl) {{
+                iframeEl.style.width = newDims.width + 'px';
+                iframeEl.style.height = newDims.height + 'px';
+            }}
+        }}, 150);
+    }});
 }})();
 """
     
