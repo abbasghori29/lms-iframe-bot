@@ -74,3 +74,4 @@ python-multipart
 
 # Language detection
 langdetect
+langchain-openai
