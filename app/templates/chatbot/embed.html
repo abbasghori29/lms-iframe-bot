@@ -1,30 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAFS Chatbot Widget</title>
     <style>
+        /* Reset and prevent overflow on parent page */
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important;
+            /* Always hidden within the iframe */
+            background: transparent !important;
+        }
+
         /* Embed Widget Styles */
         #cafs-chatbot-widget {
-            position: fixed;
-            bottom: 24px;
-            right: 28px;
-            z-index: 999999;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        
-        /* Mobile: Keep widget container normal, only iframe goes full screen */
-        @media (max-width: 768px) {
-            #cafs-chatbot-widget {
-                position: fixed !important;
-                bottom: 16px !important;
-                right: 20px !important;
-                top: auto !important;
-                left: auto !important;
-                width: auto !important;
-                height: auto !important;
-            }
+            /* Flex layout to manage the button and chat window */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: flex-end;
+            height: 100%;
+            width: 100%;
+            pointer-events: none;
+            /* Let clicks pass through empty areas */
+            padding-right: 28px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
         }
 
         /* Toggle Button */
@@ -42,15 +48,21 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            pointer-events: auto;
+            /* Re-enable clicks */
+            z-index: 20;
         }
 
-        #cafs-chatbot-toggle:hover {
-            transform: scale(1.08);
-            box-shadow: 0 8px 30px rgba(252, 83, 4, 0.55);
-        }
+        /* Hover/Active effects - Desktop Only */
+        @media (hover: hover) {
+            #cafs-chatbot-toggle:hover {
+                transform: scale(1.08);
+                box-shadow: 0 8px 30px rgba(252, 83, 4, 0.55);
+            }
 
-        #cafs-chatbot-toggle:active {
-            transform: scale(0.95);
+            #cafs-chatbot-toggle:active {
+                transform: scale(0.95);
+            }
         }
 
         #cafs-chatbot-toggle::before {
@@ -60,7 +72,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
             border-radius: 50%;
         }
 
@@ -108,19 +120,28 @@
         }
 
         @keyframes badgePop {
-            0% { transform: scale(0); }
-            70% { transform: scale(1.2); }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(0);
+            }
+
+            70% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
 
-        /* Iframe Container */
+        /* Iframe Container - appears above toggle button */
         #cafs-chatbot-frame-container {
             position: absolute;
-            bottom: 80px;
-            right: 8px;
+            bottom: 100px;
+            right: 28px;
             width: 380px;
             height: 580px;
-            max-height: calc(100vh - 120px);
+            /* Default height */
+            max-height: calc(100vh - 140px);
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
@@ -130,35 +151,13 @@
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: none;
             background: transparent;
+            z-index: 10;
         }
 
         #cafs-chatbot-frame-container.open {
             opacity: 1;
             transform: translateY(0) scale(1);
             pointer-events: all;
-        }
-        
-        /* Mobile: Only iframe container goes full screen, toggle stays in corner */
-        @media (max-width: 768px) {
-            #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 16px !important;
-                box-shadow: none !important;
-                transform: none !important;
-                transform-origin: center !important;
-            }
-            
-            #cafs-chatbot-frame-container.open {
-                transform: none !important;
-            }
         }
 
         #cafs-chatbot-frame {
@@ -207,302 +206,125 @@
         }
 
         /* ================================
-           RESPONSIVE DESIGN
+           MOBILE DESIGN (Full overhaul)
            ================================ */
-
-        /* Small laptops / Medium screens */
-        @media (max-width: 1200px) {
-            #cafs-chatbot-frame-container {
-                width: 360px;
-                height: 560px;
-                right: 6px;
-            }
-        }
-
-        /* Smaller laptops */
-        @media (max-width: 1024px) {
-            #cafs-chatbot-widget {
-                bottom: 20px;
-                right: 24px;
-            }
-
-            #cafs-chatbot-toggle {
-                width: 58px;
-                height: 58px;
-            }
-
-            #cafs-chatbot-frame-container {
-                width: 340px;
-                height: 540px;
-                max-height: calc(100vh - 100px);
-                border-radius: 18px;
-                right: 4px;
-            }
-
-            #cafs-chatbot-frame {
-                border-radius: 18px;
-            }
-        }
-
-        /* Tablets / Small screens */
         @media (max-width: 768px) {
             #cafs-chatbot-widget {
-                bottom: 16px !important;
-                right: 20px !important;
-                top: auto !important;
-                left: auto !important;
-                width: auto !important;
-                height: auto !important;
+                padding: 0;
+                /* On mobile, widget covers screen when open, small corner when closed */
             }
 
+            /* The Overlay Background (for blurred backdrop) */
+            #cafs-chatbot-widget::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                z-index: 5;
+            }
+
+            #cafs-chatbot-widget.mobile-open::before {
+                opacity: 1;
+                pointer-events: all;
+                /* Catch clicks outside to close? Optionally */
+            }
+
+            /* Mobile Toggle Button Position */
             #cafs-chatbot-toggle {
-                width: 54px;
-                height: 54px;
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                /* When open, we might hide it or move it */
             }
 
-            .toggle-icon {
-                width: 24px;
-                height: 24px;
-            }
-
+            /* Mobile Chat Window - "Bottom Sheet" Style */
             #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 16px !important;
-                box-shadow: none !important;
-                transform: none !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                /* Reset top */
+                width: 100% !important;
+                height: 85vh !important;
+                /* Take up 85% of screen height */
+                max-width: 100% !important;
+                max-height: 100% !important;
+
+                margin: 0;
+                padding: 0;
+
+                /* Border Radius for top corners only */
+                border-radius: 24px 24px 0 0 !important;
+                box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3) !important;
+
+                transform: translateY(100%);
+                /* Start hidden below screen */
+                transform-origin: center bottom !important;
+                transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+                /* Apple-like ease */
+
+                z-index: 100;
             }
 
             #cafs-chatbot-frame-container.open {
-                transform: none !important;
+                transform: translateY(0) !important;
             }
 
             #cafs-chatbot-frame {
-                border-radius: 16px;
-                width: 100% !important;
-                height: 100% !important;
+                border-radius: 24px 24px 0 0 !important;
+                background: #0d0b12;
+                /* Match internal bg to prevent white flashes */
             }
 
-            .toggle-tooltip {
-                display: none !important;
-            }
+            /* Hide toggle when open on mobile if desired, or keep it */
+            /* Current logic in script handles hiding, we can keep that or adjust CSS */
         }
 
-        /* Large mobile / Phablets */
-        @media (max-width: 600px) {
-            #cafs-chatbot-widget {
-                right: 16px;
-            }
-
-            #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 12px !important;
-                box-shadow: none !important;
-                transform: none !important;
-            }
-            
-            #cafs-chatbot-frame-container.open {
-                transform: none !important;
-            }
-            
-            #cafs-chatbot-frame {
-                border-radius: 12px;
-                width: 100% !important;
-                height: 100% !important;
-            }
-        }
-
-        /* Mobile */
+        /* Smaller Mobile Adjustments */
         @media (max-width: 480px) {
-            #cafs-chatbot-widget {
-                bottom: 12px;
-                right: 14px;
-            }
-
             #cafs-chatbot-toggle {
-                width: 52px;
-                height: 52px;
-            }
-
-            .toggle-icon {
-                width: 22px;
-                height: 22px;
+                bottom: 16px;
+                right: 16px;
+                width: 56px;
+                height: 56px;
             }
 
             #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 12px !important;
-                box-shadow: none !important;
-                transform: none !important;
-            }
-            
-            #cafs-chatbot-frame-container.open {
-                transform: none !important;
-            }
-
-            #cafs-chatbot-frame {
-                border-radius: 12px;
-                width: 100% !important;
-                height: 100% !important;
-            }
-        }
-
-        /* Small mobile */
-        @media (max-width: 360px) {
-            #cafs-chatbot-widget {
-                bottom: 10px;
-                right: 12px;
-            }
-
-            #cafs-chatbot-toggle {
-                width: 48px;
-                height: 48px;
-            }
-
-            .toggle-icon {
-                width: 20px;
-                height: 20px;
-            }
-
-            #cafs-chatbot-frame-container {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                transform: none !important;
-            }
-            
-            #cafs-chatbot-frame-container.open {
-                transform: none !important;
-            }
-
-            #cafs-chatbot-frame {
-                border-radius: 0;
-                width: 100% !important;
-                height: 100% !important;
-            }
-        }
-
-        /* Height-based responsive (small laptop screens) */
-        @media (max-height: 700px) {
-            #cafs-chatbot-frame-container {
-                height: calc(100vh - 100px);
-                max-height: 500px;
-            }
-        }
-
-        @media (max-height: 600px) {
-            #cafs-chatbot-frame-container {
-                height: calc(100vh - 90px);
-                max-height: 440px;
-                bottom: 70px;
-            }
-
-            #cafs-chatbot-toggle {
-                width: 52px;
-                height: 52px;
-            }
-        }
-
-        @media (max-height: 500px) {
-            #cafs-chatbot-frame-container {
-                height: calc(100vh - 80px);
-                max-height: 380px;
-                bottom: 62px;
-            }
-
-            #cafs-chatbot-toggle {
-                width: 48px;
-                height: 48px;
-            }
-        }
-
-        /* Landscape mobile */
-        @media (max-height: 450px) and (orientation: landscape) {
-            #cafs-chatbot-widget {
-                bottom: 8px;
-                right: 12px;
-            }
-
-            #cafs-chatbot-toggle {
-                width: 44px;
-                height: 44px;
-            }
-
-            .toggle-icon {
-                width: 18px;
-                height: 18px;
-            }
-
-            #cafs-chatbot-frame-container {
-                width: 300px;
-                height: calc(100vh - 60px);
-                max-height: none;
-                bottom: 52px;
-                border-radius: 12px;
-                right: 4px;
-            }
-
-            #cafs-chatbot-frame {
-                border-radius: 12px;
+                height: 90vh !important;
+                /* Taller on very small screens */
             }
         }
     </style>
 </head>
+
 <body>
     <div id="cafs-chatbot-widget">
         <!-- Toggle Button -->
         <button id="cafs-chatbot-toggle" onclick="toggleChatbot()">
             <span class="toggle-tooltip">Chat with CAFS Assistant</span>
             <svg class="toggle-icon chat" viewBox="0 0 24 24">
-                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
-                <circle cx="8" cy="10" r="1.5"/>
-                <circle cx="12" cy="10" r="1.5"/>
-                <circle cx="16" cy="10" r="1.5"/>
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
+                <circle cx="8" cy="10" r="1.5" />
+                <circle cx="12" cy="10" r="1.5" />
+                <circle cx="16" cy="10" r="1.5" />
             </svg>
             <svg class="toggle-icon close" viewBox="0 0 24 24">
-                <path d="M18 6L6 18M6 6l12 12"/>
+                <path d="M18 6L6 18M6 6l12 12" />
             </svg>
         </button>
 
         <!-- Iframe Container -->
         <div id="cafs-chatbot-frame-container">
-            <iframe 
-                id="cafs-chatbot-frame" 
-                src="{{ widget_url }}"
-                title="CAFS Chatbot"
-                allow="microphone"
-            ></iframe>
+            <iframe id="cafs-chatbot-frame" src="{{ widget_url }}" title="CAFS Chatbot" allow="microphone"></iframe>
         </div>
     </div>
 
@@ -513,42 +335,74 @@
             isOpen = !isOpen;
             const toggle = document.getElementById('cafs-chatbot-toggle');
             const container = document.getElementById('cafs-chatbot-frame-container');
-            
+            const widget = document.getElementById('cafs-chatbot-widget');
+
             toggle.classList.toggle('open', isOpen);
             container.classList.toggle('open', isOpen);
-            
-            // On mobile, hide toggle button when chat is open
+
+            // Toggle ID for backdrop effect logic
+            if (window.innerWidth <= 768) {
+                widget.classList.toggle('mobile-open', isOpen);
+            }
+
+            // Notify parent window (for embed.js to handle container resizing)
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: isOpen ? 'cafsChatOpen' : 'cafsChatClose'
+                }, '*');
+            }
+
+            // On mobile, handle toggle visibility
             if (window.innerWidth <= 768) {
                 if (isOpen) {
-                    toggle.style.display = 'none';
+                    toggle.style.opacity = '0';
+                    toggle.style.pointerEvents = 'none';
                 } else {
-                    toggle.style.display = 'flex';
+                    toggle.style.opacity = '1';
+                    toggle.style.pointerEvents = 'auto';
                 }
             }
         }
 
-        // Listen for close message from iframe
-        window.addEventListener('message', function(event) {
+        // Listen for close message from iframe (widget.html)
+        window.addEventListener('message', function (event) {
             if (event.data && event.data.type === 'closeChatbot') {
                 isOpen = false;
                 const toggle = document.getElementById('cafs-chatbot-toggle');
                 const container = document.getElementById('cafs-chatbot-frame-container');
+                const widget = document.getElementById('cafs-chatbot-widget');
+
                 toggle.classList.remove('open');
                 container.classList.remove('open');
+
+                // Remove backdrop class
+                if (window.innerWidth <= 768) {
+                    widget.classList.remove('mobile-open');
+                }
+
+                // Notify parent window (for embed.js to handle container resizing)
+                if (window.parent !== window) {
+                    window.parent.postMessage({ type: 'cafsChatClose' }, '*');
+                }
+
                 // Show toggle button again on mobile
                 if (window.innerWidth <= 768) {
-                    toggle.style.display = 'flex';
+                    // Small delay to let the chat window start sliding down first
+                    setTimeout(() => {
+                        toggle.style.opacity = '1';
+                        toggle.style.pointerEvents = 'auto';
+                    }, 300);
                 }
             }
         });
 
         // Close on Escape key
-        document.addEventListener('keydown', function(event) {
+        document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' && isOpen) {
                 toggleChatbot();
             }
         });
     </script>
 </body>
-</html>
 
+</html>

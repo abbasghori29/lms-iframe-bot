@@ -24,13 +24,9 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     
-    # Initialize speech-to-text model on startup (downloads if needed)
-    try:
-        from app.services.speech import init_speech_service
-        init_speech_service()
-    except Exception as e:
-        print(f"⚠ Warning: Could not initialize speech service: {e}")
-        print("Speech-to-text will be unavailable.")
+    # Note: Speech-to-text service will be loaded lazily when first used
+    # This prevents blocking startup with large model downloads
+    print("ℹ Speech-to-text will be loaded on first use (lazy loading)")
     
     yield
     # Shutdown

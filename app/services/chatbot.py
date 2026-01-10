@@ -12,6 +12,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnablePassthrough
@@ -51,18 +52,52 @@ class ChatbotService:
     
     def _initialize(self):
         """Initialize LLM and vector store"""
-        # Initialize Groq LLM
-        if not settings.GROQ_API_KEY:
-            raise ValueError("GROQ_API_KEY not found in environment variables")
+        # Initialize LLM with OpenAI as primary, Groq as fallback
+        primary_llm = None
+        fallback_llm = None
         
-        self.llm = ChatGroq(
-            model="groq/compound",
-            temperature=0,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-            groq_api_key=settings.GROQ_API_KEY,
-        )
+        # Try to initialize OpenAI as primary
+        if settings.OPENAI_API_KEY:
+            try:
+                primary_llm = ChatOpenAI(
+                    model="gpt-5",
+                    temperature=0.5,
+                    max_tokens=None,
+                    timeout=None,
+                    max_retries=2,
+                    api_key=settings.OPENAI_API_KEY,
+                )
+                print("✓ OpenAI LLM initialized as primary")
+            except Exception as e:
+                print(f"Warning: Could not initialize OpenAI LLM: {e}")
+        
+        # Initialize Groq as fallback (or primary if OpenAI not available)
+        if settings.GROQ_API_KEY:
+            try:
+                fallback_llm = ChatGroq(
+                    model="llama-3.3-70b-versatile",
+                    temperature=0,
+                    max_tokens=None,
+                    timeout=None,
+                    max_retries=2,
+                    groq_api_key=settings.GROQ_API_KEY,
+                )
+                print("✓ Groq LLM initialized as fallback")
+            except Exception as e:
+                print(f"Warning: Could not initialize Groq LLM: {e}")
+        
+        # Set up LLM with fallback chain
+        if primary_llm and fallback_llm:
+            self.llm = primary_llm.with_fallbacks([fallback_llm])
+            print("✓ LLM configured with OpenAI primary + Groq fallback")
+        elif primary_llm:
+            self.llm = primary_llm
+            print("✓ Using OpenAI LLM only (no fallback)")
+        elif fallback_llm:
+            self.llm = fallback_llm
+            print("✓ Using Groq LLM only (OpenAI not configured)")
+        else:
+            raise ValueError("No LLM API key configured. Set OPENAI_API_KEY or GROQ_API_KEY in .env")
         
         # Initialize embeddings
         self.embeddings = CustomEmbeddings(
@@ -105,87 +140,57 @@ class ChatbotService:
     def _create_prompt_template(self, include_memory: bool = False, response_language: str = "en") -> ChatPromptTemplate:
         """Create the RAG prompt template"""
         # Language-specific instructions
-        language_instruction = ""
-        if response_language == "fr":
-            language_instruction = "\nLANGUAGE REQUIREMENT: The user's question is in French. You MUST respond entirely in French. Use formal, academic French. Do not mix languages."
-        else:
-            language_instruction = "\nLANGUAGE REQUIREMENT: The user's question is in English. You MUST respond entirely in English. Do not mix languages."
+        lang_note = "Respond in French. Use formal, academic French." if response_language == "fr" else "Respond in English."
         
-        system_prompt = f"""You are an educational assistant. Your role is to help students understand course materials, certifications, training programs, and requirements.
+        system_prompt = f"""You are an educational assistant.
+{lang_note}
 
-THIS IS AN EDUCATIONAL BOT TO HELP STUDENTS WITH LEARNING MATERIALS, NOT A CUSTOMER SERVICE BOT.
+CRITICAL: YOU MUST USE ONLY HTML TAGS - NO MARKDOWN ALLOWED
 
-CRITICAL: DO NOT greet users, introduce yourself, or ask how you can help. Answer questions directly without any opening statements or greetings.
-{language_instruction}
+Your response MUST be formatted using ONLY these HTML tags:
+- <h3>text</h3> for section headers
+- <p>text</p> for paragraphs
+- <ul><li>item</li></ul> for bullet lists
+- <ol><li>item</li></ol> for numbered lists
+- <strong>text</strong> for bold/emphasis
 
-LANGUAGE MATCHING RULE:
-- English questions → English answers
-- French questions → French answers
-- Always match the language of the question
+FORBIDDEN FORMATS (DO NOT USE):
+- **bold** or __bold__ (use <strong> instead)
+- # Heading (use <h3> instead)
+- - bullet or * bullet (use <ul><li> instead)
+- 1. numbered (use <ol><li> instead)
+- Any markdown syntax
 
-TONE REQUIREMENTS (Non-Negotiable):
-- Professional: Maintain a formal, academic tone appropriate for educational content
-- Clear: Present information directly and precisely
-- Structured: Organize responses logically with clear sections
-- Neutral: Avoid personal opinions, encouragement, or emotional language
-- Instructor-like: Act as an educational guide, not a friendly helper
+REQUIRED STRUCTURE:
+1. Wrap ALL content in HTML tags
+2. Use <p> for regular text paragraphs
+3. Use <h3> for section titles
+4. Use <ul> or <ol> with <li> for ANY list (never plain text lists)
+5. Use <strong> for emphasis (never ** or __)
 
-STRICTLY AVOID:
-- Greetings or introductions (e.g., "Hello", "Hi", "How may I assist you", "How can I help")
-- Mentioning organization names or branding in responses
-- Emojis or emoticons
-- Casual phrases (e.g., "Sure", "No worries", "Happy to help", "Great question")
-- Marketing language or promotional content
-- Opinions, encouragement, or motivational statements
-- Customer service language (e.g., "How can I assist you?", "I'd be happy to...")
-- Phrases that express uncertainty or generalization: "I think", "In general", "Typically", "Generally", "Usually"
-- Referencing CSI (or any organization) as the audience or target
+EXAMPLE - CORRECT FORMAT:
+<h3>Course Requirements</h3>
+<p>The following elements are required:</p>
+<ol>
+  <li><strong>First Item:</strong> Description of the first item.</li>
+  <li><strong>Second Item:</strong> Description of the second item.</li>
+</ol>
+<p>For additional details:</p>
+<ul>
+  <li>Bullet point one</li>
+  <li>Bullet point two</li>
+</ul>
 
-SYSTEM RULES (MUST BE ENFORCED):
-1. NEVER use phrases like "I think", "In general", "Typically", "Generally", "Usually" - state facts directly
-2. NEVER reference CSI (or any organization) as the audience - you are helping students, not addressing organizations
-3. If CSI is mentioned in the context or question, introduce it ONLY with: "According to the provided material..."
-4. If information is missing or not available in the context, respond with:
-   * English: "This information is not covered in the provided material."
-   * French: "Cette information n'est pas couverte dans le matériel fourni."
+REMEMBER: If you use markdown (**, -, #, etc.), your response will be broken. ONLY use HTML tags.
 
-RESPONSE GUIDELINES:
-- Answer questions directly without greetings or introductions
-- For casual greetings (e.g., "hi", "hello", "hey", "bonjour", "salut"), respond briefly in the same language as the greeting:
-  * English: "What would you like to know about your studies?"
-  * French: "Que souhaitez-vous savoir sur vos études?"
-- Provide factual, educational information based solely on the provided context
-- Structure responses clearly with appropriate headings and formatting
-- If information is not available in the context, state in the same language as the question:
-  * English: "This information is not covered in the provided material."
-  * French: "Cette information n'est pas couverte dans le matériel fourni."
-- Focus on explaining concepts, requirements, and procedures relevant to the student's learning
+CONTENT RULES:
+- Professional tone, no greetings.
+- No document references (e.g. [Document 1]).
+- If info unavailable: "Information not provided in material."
 
-FORMATTING RULES:
-- Do NOT include document references like 【Document 1】, 【Document 2】, [Document 1], etc. in your response
-- Do NOT cite specific document numbers or page numbers in the text
-- Write naturally as if you know the information directly
-- Use markdown formatting for better readability (headers, bold, lists)
-- DO NOT use tables - instead use bullet points, numbered lists, or simple formatted text
-- For numbered lists, put EACH item on its OWN LINE:
-  1. First item
-  2. Second item
-  3. Third item
-- NEVER put multiple numbered items on the same line like "1. ... 2. ... 3. ..."
-- For structured information, use this format:
-  • **Item Name**: Description
-  • **Item Name**: Description
-- Keep responses clear, organized, and easy to read
-- Use normal text weight - do not make entire paragraphs bold
-
-Context from educational documents:
+Context:
 {{context}}
-{{memory_context}}
-
-Answer the question based on the context above using a professional, educational tone in {response_language.upper()}. If you cannot answer from the context, 
-respond with: "This information is not covered in the provided material." (or the French equivalent: "Cette information n'est pas couverte dans le matériel fourni.")
-
-Remember: When mentioning CSI or any organization from the material, use ONLY: "According to the provided material..." Never reference organizations as the audience."""
+{{memory_context}}"""
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
@@ -195,32 +200,147 @@ Remember: When mentioning CSI or any organization from the material, use ONLY: "
         
         return prompt
     
-    def _clean_answer(self, answer: str) -> str:
-        """Clean up the LLM answer by removing document references"""
-        # Remove various document reference patterns
-        patterns = [
-            r'【Document\s*\d+】\.?',  # 【Document 1】
-            r'\[Document\s*\d+\]\.?',  # [Document 1]
-            r'\(Document\s*\d+\)\.?',  # (Document 1)
-            r'Document\s*\d+:?',       # Document 1
-            r'Source\s*\d+:?',         # Source 1
-            r'\[Source:\s*[^\]]+\]',   # [Source: file.pdf]
-            r'\(Source:\s*[^\)]+\)',   # (Source: file.pdf)
-            r'Page\s*\d+:?',           # Page 1
-            r'\[p\.\s*\d+\]',          # [p. 123]
-            r'\(p\.\s*\d+\)',          # (p. 123)
-        ]
+    def _normalize_markdown_to_html(self, text: str) -> str:
+        """Convert any markdown that slipped through to HTML"""
+        # First, convert markdown bold to HTML (do this before line processing)
+        text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+        text = re.sub(r'__(.+?)__', r'<strong>\1</strong>', text)
         
-        for pattern in patterns:
+        # Process line by line
+        lines = text.split('\n')
+        result_lines = []
+        in_ul = False
+        in_ol = False
+        in_p = False
+        current_paragraph = []
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Check for markdown heading
+            heading_match = re.match(r'^#{1,6}\s+(.+)$', stripped)
+            if heading_match:
+                # Close any open tags
+                if in_p:
+                    result_lines.append(f'<p>{" ".join(current_paragraph)}</p>')
+                    current_paragraph = []
+                    in_p = False
+                if in_ul:
+                    result_lines.append('</ul>')
+                    in_ul = False
+                if in_ol:
+                    result_lines.append('</ol>')
+                    in_ol = False
+                result_lines.append(f'<h3>{heading_match.group(1)}</h3>')
+                continue
+            
+            # Check for unordered list item
+            ul_match = re.match(r'^[-*]\s+(.+)$', stripped)
+            if ul_match:
+                if in_p:
+                    result_lines.append(f'<p>{" ".join(current_paragraph)}</p>')
+                    current_paragraph = []
+                    in_p = False
+                if in_ol:
+                    result_lines.append('</ol>')
+                    in_ol = False
+                if not in_ul:
+                    result_lines.append('<ul>')
+                    in_ul = True
+                result_lines.append(f'  <li>{ul_match.group(1)}</li>')
+                continue
+            
+            # Check for ordered list item
+            ol_match = re.match(r'^\d+\.\s+(.+)$', stripped)
+            if ol_match:
+                if in_p:
+                    result_lines.append(f'<p>{" ".join(current_paragraph)}</p>')
+                    current_paragraph = []
+                    in_p = False
+                if in_ul:
+                    result_lines.append('</ul>')
+                    in_ul = False
+                if not in_ol:
+                    result_lines.append('<ol>')
+                    in_ol = True
+                result_lines.append(f'  <li>{ol_match.group(1)}</li>')
+                continue
+            
+            # Empty line - close open tags
+            if not stripped:
+                if in_p:
+                    result_lines.append(f'<p>{" ".join(current_paragraph)}</p>')
+                    current_paragraph = []
+                    in_p = False
+                if in_ul:
+                    result_lines.append('</ul>')
+                    in_ul = False
+                if in_ol:
+                    result_lines.append('</ol>')
+                    in_ol = False
+                continue
+            
+            # Check if line is already HTML
+            if stripped.startswith('<') and ('</' in stripped or stripped.endswith('>')):
+                # Close open tags
+                if in_p:
+                    result_lines.append(f'<p>{" ".join(current_paragraph)}</p>')
+                    current_paragraph = []
+                    in_p = False
+                if in_ul:
+                    result_lines.append('</ul>')
+                    in_ul = False
+                if in_ol:
+                    result_lines.append('</ol>')
+                    in_ol = False
+                result_lines.append(line)
+                continue
+            
+            # Regular text - add to paragraph
+            if not in_p:
+                in_p = True
+            current_paragraph.append(stripped)
+        
+        # Close any remaining open tags
+        if in_p:
+            result_lines.append(f'<p>{" ".join(current_paragraph)}</p>')
+        if in_ul:
+            result_lines.append('</ul>')
+        if in_ol:
+            result_lines.append('</ol>')
+        
+        return '\n'.join(result_lines)
+    
+    def _clean_answer(self, answer: str) -> str:
+        """Clean up the LLM answer - normalize to HTML and remove junk"""
+        
+        # Step 1: Remove document references
+        doc_patterns = [
+            r'【Document\s*\d+】\.?', r'\[Document\s*\d+\]\.?', r'\(Document\s*\d+\)\.?',
+            r'Document\s*\d+:?', r'Source\s*\d+:?', r'\[Source:\s*[^\]]+\]',
+            r'\(Source:\s*[^\)]+\)', r'Page\s*\d+:?', r'\[p\.\s*\d+\]', r'\(p\.\s*\d+\)',
+        ]
+        for pattern in doc_patterns:
             answer = re.sub(pattern, '', answer, flags=re.IGNORECASE)
         
-        # Clean up extra whitespace and dots
-        answer = re.sub(r'\s+\.', '.', answer)  # Remove space before dots
-        answer = re.sub(r'\.{2,}', '.', answer)  # Multiple dots to single
-        answer = re.sub(r'\s{2,}', ' ', answer)  # Multiple spaces to single
-        answer = re.sub(r'\n{3,}', '\n\n', answer)  # Multiple newlines to double
+        # Step 2: Normalize any markdown to HTML
+        # Check if answer contains markdown patterns
+        has_markdown = bool(re.search(r'(\*\*|__|^#{1,6}\s|^[-*]\s|^\d+\.\s)', answer, re.MULTILINE))
+        if has_markdown:
+            answer = self._normalize_markdown_to_html(answer)
         
-        return answer.strip()
+        # Step 3: Ensure proper spacing after HTML block elements
+        answer = answer.replace('</h3>', '</h3>\n')
+        answer = answer.replace('</p>', '</p>\n')
+        answer = answer.replace('</ul>', '</ul>\n')
+        answer = answer.replace('</ol>', '</ol>\n')
+        answer = answer.replace('</li>', '</li>\n')
+        
+        # Step 4: Clean up excessive whitespace
+        answer = re.sub(r'\n{3,}', '\n\n', answer)
+        answer = answer.strip()
+        
+        return answer
     
     def _detect_language(self, text: str) -> str:
         """Detect the language of the input text"""
@@ -367,9 +487,9 @@ Translation:"""
             error_msg = str(e)
             # Provide more helpful error messages
             if "model_decommissioned" in error_msg.lower() or "model" in error_msg.lower():
-                error_msg = f"LLM model error: {error_msg}. Please check your Groq API key and model availability."
+                error_msg = f"LLM model error: {error_msg}. Please check your API key and model availability."
             elif "api" in error_msg.lower() or "key" in error_msg.lower():
-                error_msg = f"API error: {error_msg}. Please check your Groq API key configuration."
+                error_msg = f"API error: {error_msg}. Please check your OpenAI/Groq API key configuration."
             
             return {
                 "answer": f"I apologize, but I encountered an error while generating a response: {error_msg}",

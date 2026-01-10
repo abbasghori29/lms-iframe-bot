@@ -17,7 +17,17 @@ def get_speech():
     if _speech_service is None:
         from app.services.speech import get_speech_service
         from app.core.config import settings
+        print("\n" + "=" * 60)
+        print("🎤 LOADING SPEECH-TO-TEXT SERVICE (First Use)")
+        print("=" * 60)
+        print(f"Model: {settings.WHISPER_MODEL}")
+        print("Note: First time may download the model (this can take a few minutes)")
+        print("")
         _speech_service = get_speech_service(model_size=settings.WHISPER_MODEL)
+        print("")
+        print("=" * 60)
+        print("✓ Speech-to-Text service ready!")
+        print("=" * 60 + "\n")
     return _speech_service
 
 

@@ -75,6 +75,7 @@ BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8005"]
 
 # LLM / AI
 GROQ_API_KEY=your-groq-api-key-here
+OPENAI_API_KEY=your-openai-api-key-here
 VECTOR_STORE_PATH=faiss_index
 EMBEDDING_API_URL=https://lamhieu-lightweight-embeddings.hf.space/v1/embeddings
 EMBEDDING_MODEL=bge-m3

@@ -45,6 +45,7 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           APP_DIR: ${{ secrets.EC2_APP_DIR || '/home/ec2-user/lms-bot' }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           REPO_URL: ${{ github.event.repository.clone_url }}
         run: |
@@ -61,6 +62,7 @@ jobs:
             "export APP_DIR='${APP_DIR:-/home/ec2-user/lms-bot}' && \
              export REPO_URL='$REPO_URL' && \
              export GROQ_KEY='$GROQ_API_KEY' && \
+             export OPENAI_KEY='$OPENAI_API_KEY' && \
              export PINECONE_KEY='$PINECONE_API_KEY' && \
              export EC2_USER_NAME='$EC2_USER' && \
              bash" << 'DEPLOY_SCRIPT'
@@ -153,6 +155,7 @@ jobs:
           
           # LLM / AI
           GROQ_API_KEY=$GROQ_KEY
+          OPENAI_API_KEY=$OPENAI_KEY
           VECTOR_STORE_PATH=faiss_index
           EMBEDDING_API_URL=https://lamhieu-lightweight-embeddings.hf.space/v1/embeddings
           EMBEDDING_MODEL=bge-m3

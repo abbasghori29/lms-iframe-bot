@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAFS Assistant</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <!-- Markdown parser -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -18,26 +21,43 @@
 
         :root {
             /* Brand Orange/Coral Theme */
-            --primary: #fc5304;           /* Orangered - main brand color */
-            --primary-dark: #e04800;      /* Darker orange for hover */
-            --primary-light: #fc7c54;     /* Coral - lighter accent */
-            --primary-soft: #fcb8a0;      /* Darksalmon - soft accent */
-            --bg-dark: #0d0b12;           /* Very dark purple-black */
-            --bg-card: #1a1520;           /* Dark purple-gray */
-            --bg-input: #14111a;          /* Input background */
-            --text-primary: #f8fafc;      /* White text */
-            --text-secondary: #c4b8c8;    /* Muted purple-gray text */
-            --text-muted: #8a7a90;        /* Dimmer text */
-            --border: #2d2535;            /* Purple-tinted border */
-            --success: #10b981;           /* Green for success states */
-            --user-bubble: linear-gradient(135deg, #fc5304 0%, #fc7c54 100%);  /* Orange gradient */
-            --bot-bubble: #1e1825;        /* Dark purple for bot messages */
+            --primary: #fc5304;
+            /* Orangered - main brand color */
+            --primary-dark: #e04800;
+            /* Darker orange for hover */
+            --primary-light: #fc7c54;
+            /* Coral - lighter accent */
+            --primary-soft: #fcb8a0;
+            /* Darksalmon - soft accent */
+            --bg-dark: #0d0b12;
+            /* Very dark purple-black */
+            --bg-card: #1a1520;
+            /* Dark purple-gray */
+            --bg-input: #14111a;
+            /* Input background */
+            --text-primary: #f8fafc;
+            /* White text */
+            --text-secondary: #c4b8c8;
+            /* Muted purple-gray text */
+            --text-muted: #8a7a90;
+            /* Dimmer text */
+            --border: #2d2535;
+            /* Purple-tinted border */
+            --success: #10b981;
+            /* Green for success states */
+            --user-bubble: linear-gradient(135deg, #fc5304 0%, #fc7c54 100%);
+            /* Orange gradient */
+            --bot-bubble: #1e1825;
+            /* Dark purple for bot messages */
             --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-            --accent-gold: #f9c847;       /* Goldenrod accent */
-            --accent-purple: #8662ac;     /* Medium purple accent */
+            --accent-gold: #f9c847;
+            /* Goldenrod accent */
+            --accent-purple: #8662ac;
+            /* Medium purple accent */
         }
 
-        html, body {
+        html,
+        body {
             font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background: transparent !important;
             color: var(--text-primary);
@@ -46,14 +66,29 @@
             overflow: hidden;
             margin: 0;
             padding: 0;
+            /* Prevent scroll from bleeding to parent page */
+            overscroll-behavior: contain;
+            touch-action: none;
         }
-        
-        /* Mobile: Ensure full viewport size */
+
+        /* Mobile: Ensure full container size without overflow */
         @media (max-width: 768px) {
-            html, body {
-                height: 100vh !important;
-                width: 100vw !important;
+
+            html,
+            body {
+                height: 100% !important;
+                width: 100% !important;
+                max-height: 100% !important;
+                max-width: 100% !important;
                 overflow: hidden !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                /* Prevent scroll from bleeding to parent page */
+                overscroll-behavior: contain !important;
+                touch-action: none !important;
             }
         }
 
@@ -67,14 +102,15 @@
             overflow: hidden;
             box-shadow: var(--shadow);
         }
-        
-        /* Mobile: Keep rounded corners but full screen */
+
+        /* Mobile: Full screen without gaps */
         @media (max-width: 768px) {
             .chat-container {
-                border-radius: 16px !important;
+                border-radius: 20px 20px 0 0 !important;
+                /* Rounded Top */
                 box-shadow: none !important;
-                height: 100vh !important;
-                width: 100vw !important;
+                height: 100% !important;
+                width: 100% !important;
             }
         }
 
@@ -135,15 +171,22 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .close-btn {
             width: 36px;
             height: 36px;
             border: none;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
             cursor: pointer;
             display: flex;
@@ -154,7 +197,7 @@
         }
 
         .close-btn:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: var(--text-primary);
         }
 
@@ -167,6 +210,10 @@
             flex-direction: column;
             gap: 16px;
             scroll-behavior: smooth;
+            /* Prevent scroll from bleeding to parent page */
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
         }
 
         .chat-messages::-webkit-scrollbar {
@@ -196,6 +243,7 @@
                 opacity: 0;
                 transform: translateY(10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -223,7 +271,8 @@
         }
 
         .message.user .avatar {
-            background: linear-gradient(135deg, #8662ac 0%, #6b4d8a 100%);  /* Purple accent from brand */
+            background: linear-gradient(135deg, #8662ac 0%, #6b4d8a 100%);
+            /* Purple accent from brand */
         }
 
         .message.bot .avatar {
@@ -270,13 +319,31 @@
             animation: typingBounce 1.4s infinite ease-in-out;
         }
 
-        .typing-dot:nth-child(1) { animation-delay: 0s; }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
 
         @keyframes typingBounce {
-            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-            40% { transform: translateY(-6px); opacity: 1; }
+
+            0%,
+            80%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+
+            40% {
+                transform: translateY(-6px);
+                opacity: 1;
+            }
         }
 
         /* Quick Suggestions - Inline with messages */
@@ -312,35 +379,44 @@
         .voice-processing {
             background: linear-gradient(135deg, var(--primary) 0%, #e04800 100%) !important;
         }
-        
+
         .voice-processing-content {
             display: flex;
             align-items: center;
             gap: 10px;
             color: white;
         }
-        
+
         .voice-wave-icon {
             flex-shrink: 0;
             animation: pulse-icon 1.5s ease-in-out infinite;
         }
-        
+
         @keyframes pulse-icon {
-            0%, 100% { opacity: 0.7; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.1); }
+
+            0%,
+            100% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
         }
-        
+
         .voice-text {
             font-weight: 500;
             font-size: 14px;
         }
-        
+
         .voice-loader {
             display: flex;
             gap: 3px;
             margin-left: auto;
         }
-        
+
         .voice-loader span {
             width: 4px;
             height: 16px;
@@ -348,16 +424,31 @@
             border-radius: 2px;
             animation: voice-bar 1s ease-in-out infinite;
         }
-        
-        .voice-loader span:nth-child(1) { animation-delay: 0s; }
-        .voice-loader span:nth-child(2) { animation-delay: 0.2s; }
-        .voice-loader span:nth-child(3) { animation-delay: 0.4s; }
-        
-        @keyframes voice-bar {
-            0%, 100% { height: 6px; }
-            50% { height: 18px; }
+
+        .voice-loader span:nth-child(1) {
+            animation-delay: 0s;
         }
-        
+
+        .voice-loader span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .voice-loader span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes voice-bar {
+
+            0%,
+            100% {
+                height: 6px;
+            }
+
+            50% {
+                height: 18px;
+            }
+        }
+
         /* Toast Notification */
         .toast-notification {
             position: fixed;
@@ -375,7 +466,7 @@
             z-index: 10000;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
-        
+
         .toast-notification.show {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
@@ -525,9 +616,12 @@
         }
 
         @keyframes recordPulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
             }
+
             50% {
                 box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
             }
@@ -561,6 +655,7 @@
                 opacity: 0;
                 transform: translateX(-50%) translateY(5px);
             }
+
             to {
                 opacity: 1;
                 transform: translateX(-50%) translateY(0);
@@ -576,8 +671,15 @@
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
         }
 
         .recording-time {
@@ -608,14 +710,32 @@
             animation: visualize 0.5s ease-in-out infinite;
         }
 
-        .visualizer-bar:nth-child(1) { animation-delay: 0s; }
-        .visualizer-bar:nth-child(2) { animation-delay: 0.1s; }
-        .visualizer-bar:nth-child(3) { animation-delay: 0.2s; }
-        .visualizer-bar:nth-child(4) { animation-delay: 0.3s; }
+        .visualizer-bar:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .visualizer-bar:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .visualizer-bar:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .visualizer-bar:nth-child(4) {
+            animation-delay: 0.3s;
+        }
 
         @keyframes visualize {
-            0%, 100% { transform: scaleY(0.3); }
-            50% { transform: scaleY(1); }
+
+            0%,
+            100% {
+                transform: scaleY(0.3);
+            }
+
+            50% {
+                transform: scaleY(1);
+            }
         }
 
         /* Markdown Styles */
@@ -639,15 +759,23 @@
             font-weight: 500;
         }
 
-        .bubble .markdown-content h1 { font-size: 1.25em; }
-        .bubble .markdown-content h2 { font-size: 1.15em; }
-        .bubble .markdown-content h3 { font-size: 1.05em; }
+        .bubble .markdown-content h1 {
+            font-size: 1.25em;
+        }
+
+        .bubble .markdown-content h2 {
+            font-size: 1.15em;
+        }
+
+        .bubble .markdown-content h3 {
+            font-size: 1.05em;
+        }
 
         .bubble .markdown-content strong {
             color: var(--text-primary);
             font-weight: 500;
         }
-        
+
         .bubble .markdown-content p,
         .bubble .markdown-content li {
             font-weight: 400;
@@ -850,7 +978,7 @@
         /* ================================
            RESPONSIVE DESIGN
            ================================ */
-        
+
         /* Large screens / Desktop */
         @media (min-width: 1200px) {
             .bubble .markdown-content table {
@@ -863,55 +991,55 @@
             .chat-header {
                 padding: 14px 16px;
             }
-            
+
             .bot-avatar-header {
                 width: 40px;
                 height: 40px;
             }
-            
+
             .header-title {
                 font-size: 16px;
             }
-            
+
             .chat-messages {
                 padding: 16px;
                 gap: 14px;
             }
-            
+
             .message {
                 max-width: 88%;
             }
-            
+
             .bubble {
                 padding: 12px 16px;
                 font-size: 14px;
             }
-            
+
             .suggestions-inline,
             .welcome-suggestions {
                 gap: 5px;
             }
-            
+
             .suggestion-btn {
                 padding: 6px 12px;
                 font-size: 11px;
             }
-            
+
             .suggestion-btn {
                 padding: 8px 14px;
                 font-size: 12px;
             }
-            
+
             .chat-input-area {
                 padding: 14px 16px 16px;
             }
-            
+
             #messageInput {
                 padding: 12px 16px;
                 font-size: 14px;
                 min-height: 46px;
             }
-            
+
             .send-btn {
                 width: 46px;
                 height: 46px;
@@ -923,136 +1051,144 @@
             .chat-container {
                 border-radius: 16px;
             }
-            
+
             .chat-header {
                 padding: 12px 14px;
                 gap: 10px;
             }
-            
+
             .bot-avatar-header {
                 width: 36px;
                 height: 36px;
                 border-radius: 10px;
             }
-            
+
             .header-title {
                 font-size: 15px;
             }
-            
+
             .header-status {
                 font-size: 12px;
             }
-            
+
             .close-btn {
                 width: 32px;
                 height: 32px;
             }
-            
+
             .chat-messages {
                 padding: 14px;
                 gap: 12px;
             }
-            
+
             .message {
                 max-width: 90%;
                 gap: 10px;
             }
-            
+
             .avatar {
                 width: 32px;
                 height: 32px;
                 border-radius: 8px;
             }
-            
+
             .bubble {
                 padding: 10px 14px;
                 font-size: 13.5px;
                 border-radius: 16px;
             }
-            
+
             .bubble .markdown-content {
                 line-height: 1.6;
             }
-            
-            .bubble .markdown-content h1 { font-size: 1.3em; }
-            .bubble .markdown-content h2 { font-size: 1.15em; }
-            .bubble .markdown-content h3 { font-size: 1.05em; }
-            
+
+            .bubble .markdown-content h1 {
+                font-size: 1.3em;
+            }
+
+            .bubble .markdown-content h2 {
+                font-size: 1.15em;
+            }
+
+            .bubble .markdown-content h3 {
+                font-size: 1.05em;
+            }
+
             .bubble .markdown-content table {
                 font-size: 12px;
             }
-            
+
             .bubble .markdown-content th,
             .bubble .markdown-content td {
                 padding: 8px 10px;
                 min-width: 80px;
             }
-            
+
             .bubble .markdown-content pre {
                 padding: 10px;
                 font-size: 12px;
             }
-            
-            
+
+
             .suggestions-inline,
             .welcome-suggestions {
                 gap: 4px;
                 margin-top: 10px;
             }
-            
+
             .suggestion-btn {
                 padding: 7px 12px;
                 font-size: 11.5px;
                 border-radius: 16px;
             }
-            
+
             .chat-input-area {
                 padding: 12px 14px 14px;
             }
-            
+
             .input-wrapper {
                 gap: 10px;
             }
-            
+
             #messageInput {
                 padding: 10px 14px;
                 font-size: 13.5px;
                 min-height: 42px;
                 border-radius: 12px;
             }
-            
+
             .send-btn,
             .mic-btn {
                 width: 42px;
                 height: 42px;
                 border-radius: 12px;
             }
-            
+
             .send-btn svg,
             .mic-btn svg {
                 width: 18px;
                 height: 18px;
             }
-            
+
             .recording-indicator {
                 padding: 6px 10px;
                 font-size: 11px;
             }
-            
+
             .welcome-message {
                 padding: 30px 16px;
             }
-            
+
             .welcome-icon {
                 width: 60px;
                 height: 60px;
                 border-radius: 16px;
             }
-            
+
             .welcome-title {
                 font-size: 18px;
             }
-            
+
             .welcome-subtitle {
                 font-size: 13px;
             }
@@ -1066,139 +1202,147 @@
                 height: 100vh !important;
                 width: 100vw !important;
             }
-            
+
             .chat-header {
                 padding: 10px 12px;
                 gap: 8px;
             }
-            
+
             .bot-avatar-header {
                 width: 32px;
                 height: 32px;
                 font-size: 14px;
                 border-radius: 8px;
             }
-            
+
             .header-title {
                 font-size: 14px;
             }
-            
+
             .header-status {
                 font-size: 11px;
                 gap: 4px;
             }
-            
+
             .status-dot {
                 width: 6px;
                 height: 6px;
             }
-            
+
             .close-btn {
                 width: 30px;
                 height: 30px;
                 border-radius: 8px;
             }
-            
+
             .close-btn svg {
                 width: 14px;
                 height: 14px;
             }
-            
+
             .chat-messages {
                 padding: 12px;
                 gap: 10px;
             }
-            
+
             .message {
                 max-width: 92%;
                 gap: 8px;
             }
-            
+
             .avatar {
                 width: 28px;
                 height: 28px;
                 border-radius: 6px;
             }
-            
+
             .bubble {
                 padding: 10px 12px;
                 font-size: 13px;
                 border-radius: 14px;
             }
-            
+
             .message.user .bubble {
                 border-bottom-right-radius: 4px;
             }
-            
+
             .message.bot .bubble {
                 border-bottom-left-radius: 4px;
             }
-            
+
             .bubble .markdown-content {
                 line-height: 1.55;
             }
-            
-            .bubble .markdown-content h1 { font-size: 1.2em; }
-            .bubble .markdown-content h2 { font-size: 1.1em; }
-            .bubble .markdown-content h3 { font-size: 1em; }
-            
+
+            .bubble .markdown-content h1 {
+                font-size: 1.2em;
+            }
+
+            .bubble .markdown-content h2 {
+                font-size: 1.1em;
+            }
+
+            .bubble .markdown-content h3 {
+                font-size: 1em;
+            }
+
             .bubble .markdown-content ul,
             .bubble .markdown-content ol {
                 padding-left: 18px;
                 margin: 8px 0;
             }
-            
+
             .bubble .markdown-content li {
                 margin-bottom: 4px;
             }
-            
+
             .bubble .markdown-content table {
                 font-size: 11px;
             }
-            
+
             .bubble .markdown-content th,
             .bubble .markdown-content td {
                 padding: 6px 8px;
                 min-width: 60px;
             }
-            
+
             .bubble .markdown-content pre {
                 padding: 8px;
                 font-size: 11px;
                 margin: 8px 0;
             }
-            
+
             .bubble .markdown-content blockquote {
                 padding-left: 12px;
                 margin: 8px 0;
             }
-            
-            
+
+
             .suggestions-inline,
             .welcome-suggestions {
                 gap: 4px;
                 margin-top: 8px;
             }
-            
+
             .suggestion-btn {
                 padding: 5px 10px;
                 font-size: 10px;
             }
-            
+
             .suggestion-btn {
                 padding: 6px 10px;
                 font-size: 11px;
                 border-radius: 14px;
             }
-            
+
             .chat-input-area {
                 padding: 10px 12px 12px;
             }
-            
+
             .input-wrapper {
                 gap: 8px;
             }
-            
+
             #messageInput {
                 padding: 10px 12px;
                 font-size: 13px;
@@ -1206,44 +1350,44 @@
                 max-height: 100px;
                 border-radius: 10px;
             }
-            
+
             .send-btn {
                 width: 40px;
                 height: 40px;
                 border-radius: 10px;
             }
-            
+
             .send-btn svg {
                 width: 16px;
                 height: 16px;
             }
-            
+
             .welcome-message {
                 padding: 24px 14px;
             }
-            
+
             .welcome-icon {
                 width: 50px;
                 height: 50px;
                 border-radius: 14px;
                 margin-bottom: 16px;
             }
-            
+
             .welcome-title {
                 font-size: 16px;
                 margin-bottom: 6px;
             }
-            
+
             .welcome-subtitle {
                 font-size: 12px;
                 line-height: 1.5;
             }
-            
+
             .typing-dot {
                 width: 6px;
                 height: 6px;
             }
-            
+
             .thinking-text {
                 font-size: 12px;
             }
@@ -1254,28 +1398,28 @@
             .message {
                 max-width: 95%;
             }
-            
+
             .avatar {
                 width: 24px;
                 height: 24px;
             }
-            
+
             .bubble {
                 padding: 8px 10px;
                 font-size: 12px;
             }
-            
+
             .suggestion-btn {
                 padding: 5px 8px;
                 font-size: 10px;
             }
-            
+
             #messageInput {
                 padding: 8px 10px;
                 font-size: 12px;
                 min-height: 36px;
             }
-            
+
             .send-btn {
                 width: 36px;
                 height: 36px;
@@ -1287,34 +1431,34 @@
             .chat-header {
                 padding: 10px 14px;
             }
-            
+
             .bot-avatar-header {
                 width: 36px;
                 height: 36px;
             }
-            
+
             .chat-messages {
                 padding: 12px;
             }
-            
+
             .welcome-message {
                 padding: 20px 16px;
             }
-            
+
             .welcome-icon {
                 width: 50px;
                 height: 50px;
                 margin-bottom: 12px;
             }
-            
+
             .welcome-title {
                 font-size: 16px;
             }
-            
+
             .welcome-suggestions {
                 margin-top: 14px;
             }
-            
+
             .chat-input-area {
                 padding: 10px 14px 12px;
             }
@@ -1324,62 +1468,62 @@
             .chat-header {
                 padding: 8px 12px;
             }
-            
+
             .bot-avatar-header {
                 width: 32px;
                 height: 32px;
             }
-            
+
             .header-title {
                 font-size: 14px;
             }
-            
+
             .chat-messages {
                 padding: 10px;
                 gap: 8px;
             }
-            
+
             .welcome-message {
                 padding: 16px 12px;
             }
-            
+
             .welcome-icon {
                 width: 40px;
                 height: 40px;
                 margin-bottom: 10px;
             }
-            
+
             .welcome-title {
                 font-size: 14px;
             }
-            
+
             .welcome-subtitle {
                 font-size: 11px;
             }
-            
+
             .welcome-suggestions {
                 margin-top: 12px;
             }
-            
+
             .suggestion-btn {
                 padding: 4px 8px;
                 font-size: 10px;
             }
-            
+
             .suggestion-btn {
                 padding: 5px 10px;
                 font-size: 11px;
             }
-            
+
             .chat-input-area {
                 padding: 8px 12px 10px;
             }
-            
+
             #messageInput {
                 min-height: 38px;
                 padding: 8px 12px;
             }
-            
+
             .send-btn {
                 width: 38px;
                 height: 38px;
@@ -1387,13 +1531,15 @@
         }
     </style>
 </head>
+
 <body>
     <div class="chat-container">
         <!-- Header -->
         <div class="chat-header">
             <div class="bot-avatar-header">
                 <svg viewBox="0 0 24 24" fill="white">
-                    <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                    <path
+                        d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
                 </svg>
             </div>
             <div class="header-info">
@@ -1405,7 +1551,7 @@
             </div>
             <button class="close-btn" onclick="closeWidget()" title="Close">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
+                    <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
             </button>
         </div>
@@ -1415,7 +1561,8 @@
             <div class="welcome-message">
                 <div class="welcome-icon">
                     <svg viewBox="0 0 24 24" fill="white">
-                        <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                        <path
+                            d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
                     </svg>
                 </div>
                 <div class="welcome-title">How can I help with your studies today?</div>
@@ -1429,13 +1576,8 @@
         <div class="chat-input-area">
             <div class="input-wrapper">
                 <div class="input-container">
-                    <textarea 
-                        id="messageInput" 
-                        placeholder="Ask about courses..."
-                        rows="1"
-                        onkeydown="handleKeyDown(event)"
-                        oninput="autoResize(this)"
-                    ></textarea>
+                    <textarea id="messageInput" placeholder="Ask about courses..." rows="1"
+                        onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
                 </div>
                 <!-- Microphone Button -->
                 <button class="mic-btn" id="micBtn" onclick="toggleRecording()" title="Voice input">
@@ -1450,16 +1592,17 @@
                         <span class="recording-time" id="recordingTime">0:00</span>
                     </div>
                     <svg id="micIcon" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        <path
+                            d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                     </svg>
                     <svg id="stopIcon" viewBox="0 0 24 24" style="display: none;">
-                        <rect x="6" y="6" width="12" height="12" rx="2"/>
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
                     </svg>
                 </button>
                 <!-- Send Button -->
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()">
                     <svg viewBox="0 0 24 24">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                     </svg>
                 </button>
             </div>
@@ -1471,21 +1614,21 @@
         const SPEECH_API_URL = '{{ speech_api_url }}';
         let isTyping = false;
         let chatHistory = [];
-        
+
         // SVG Icons (defined early for use in all functions)
         const BOT_ICON = `<svg viewBox="0 0 24 24" fill="white"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>`;
         const USER_ICON = `<svg viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
-        
+
         // ============================================
         // Speech-to-Text Recording System
         // ============================================
-        
+
         let mediaRecorder = null;
         let audioChunks = [];
         let isRecording = false;
         let recordingStartTime = null;
         let recordingTimer = null;
-        
+
         async function toggleRecording() {
             if (isRecording) {
                 await stopRecording();
@@ -1493,100 +1636,100 @@
                 await startRecording();
             }
         }
-        
+
         async function startRecording() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         echoCancellation: true,
                         noiseSuppression: true,
                         sampleRate: 16000,
                     }
                 });
-                
+
                 audioChunks = [];
                 mediaRecorder = new MediaRecorder(stream, {
                     mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
                 });
-                
+
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         audioChunks.push(event.data);
                     }
                 };
-                
+
                 mediaRecorder.onstop = async () => {
                     // Stop all tracks
                     stream.getTracks().forEach(track => track.stop());
-                    
+
                     // Create blob and transcribe
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     await transcribeAudio(audioBlob);
                 };
-                
+
                 mediaRecorder.start(100); // Collect data every 100ms
                 isRecording = true;
                 recordingStartTime = Date.now();
-                
+
                 // Update UI
                 const micBtn = document.getElementById('micBtn');
                 const micIcon = document.getElementById('micIcon');
                 const stopIcon = document.getElementById('stopIcon');
-                
+
                 micBtn.classList.add('recording');
                 micIcon.style.display = 'none';
                 stopIcon.style.display = 'block';
-                
+
                 // Start timer
                 updateRecordingTime();
                 recordingTimer = setInterval(updateRecordingTime, 1000);
-                
+
                 console.log('Recording started...');
-                
+
             } catch (error) {
                 console.error('Error starting recording:', error);
                 alert('Could not access microphone. Please check permissions.');
             }
         }
-        
+
         async function stopRecording() {
             if (!mediaRecorder || !isRecording) return;
-            
+
             isRecording = false;
             clearInterval(recordingTimer);
-            
+
             // Update UI
             const micBtn = document.getElementById('micBtn');
             const micIcon = document.getElementById('micIcon');
             const stopIcon = document.getElementById('stopIcon');
-            
+
             micBtn.classList.remove('recording');
             micIcon.style.display = 'block';
             stopIcon.style.display = 'none';
-            
+
             // Reset timer display
             document.getElementById('recordingTime').textContent = '0:00';
-            
+
             // Stop recording (will trigger onstop event)
             mediaRecorder.stop();
-            
+
             console.log('Recording stopped');
         }
-        
+
         function updateRecordingTime() {
             if (!recordingStartTime) return;
-            
+
             const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
-            
-            document.getElementById('recordingTime').textContent = 
+
+            document.getElementById('recordingTime').textContent =
                 `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
-        
+
         // Voice message element reference for updating
         let voiceMessageElement = null;
-        
+
         function addVoiceProcessingMessage() {
             const messagesContainer = document.getElementById('chatMessages');
             const welcomeMsg = messagesContainer.querySelector('.welcome-message');
@@ -1595,7 +1738,7 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message user';
             messageDiv.id = 'voiceProcessingMessage';
-            
+
             messageDiv.innerHTML = `
                 <div class="avatar">${USER_ICON}</div>
                 <div class="bubble voice-processing">
@@ -1613,64 +1756,64 @@
 
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
+
             return messageDiv;
         }
-        
+
         function updateVoiceMessageWithText(messageElement, text) {
             if (!messageElement) return;
-            
+
             const bubble = messageElement.querySelector('.bubble');
             bubble.classList.remove('voice-processing');
             bubble.innerHTML = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
-        
+
         function removeVoiceProcessingMessage() {
             const msg = document.getElementById('voiceProcessingMessage');
             if (msg) msg.remove();
         }
-        
+
         async function transcribeAudio(audioBlob) {
             const micBtn = document.getElementById('micBtn');
-            
+
             // Show voice processing message immediately
             voiceMessageElement = addVoiceProcessingMessage();
             micBtn.disabled = true;
-            
+
             try {
                 const formData = new FormData();
                 formData.append('audio', audioBlob, 'recording.webm');
-                
+
                 const response = await fetch(SPEECH_API_URL, {
                     method: 'POST',
                     body: formData,
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Transcription failed');
                 }
-                
+
                 const result = await response.json();
-                
+
                 if (result.text && result.text.trim()) {
                     const transcribedText = result.text.trim();
-                    
+
                     // Update the voice message with actual text
                     updateVoiceMessageWithText(voiceMessageElement, transcribedText);
                     voiceMessageElement.removeAttribute('id'); // Remove processing ID
-                    
+
                     // Add to chat history
                     chatHistory.push({ role: 'human', content: transcribedText });
-                    
+
                     // Now send to LLM
                     await processWithLLM(transcribedText);
-                    
+
                 } else {
                     // No text transcribed - remove the processing message
                     removeVoiceProcessingMessage();
                     showToast('Could not understand audio. Please try again.');
                 }
-                
+
             } catch (error) {
                 console.error('Transcription error:', error);
                 removeVoiceProcessingMessage();
@@ -1680,24 +1823,24 @@
                 voiceMessageElement = null;
             }
         }
-        
+
         function showToast(message) {
             // Create a simple toast notification
             const toast = document.createElement('div');
             toast.className = 'toast-notification';
             toast.textContent = message;
             document.body.appendChild(toast);
-            
+
             setTimeout(() => toast.classList.add('show'), 10);
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-        
+
         async function processWithLLM(message) {
             const sendBtn = document.getElementById('sendBtn');
-            
+
             // Show typing indicator
             isTyping = true;
             sendBtn.disabled = true;
@@ -1727,7 +1870,7 @@
                 }
 
                 const data = await response.json();
-                
+
                 // Add bot response with inline suggestions
                 addMessage(data.answer, false, data.sources || [], data.quick_suggestions || []);
                 chatHistory.push({ role: 'ai', content: data.answer });
@@ -1740,27 +1883,27 @@
                 sendBtn.disabled = false;
             }
         }
-        
+
         // ============================================
         // Anonymous User Identification System
         // ============================================
-        
+
         // Generate a unique user ID using crypto API (more secure than Math.random)
         function generateUserId() {
             const timestamp = Date.now().toString(36);
-            const randomPart = crypto.randomUUID ? 
-                crypto.randomUUID() : 
+            const randomPart = crypto.randomUUID ?
+                crypto.randomUUID() :
                 'xxxx-xxxx-xxxx'.replace(/x/g, () => Math.random().toString(36)[2]);
             return `user_${timestamp}_${randomPart}`;
         }
-        
+
         // Generate a session ID for this browser session
         function generateSessionId() {
             const timestamp = Date.now().toString(36);
             const randomPart = Math.random().toString(36).substring(2, 10);
             return `sess_${timestamp}_${randomPart}`;
         }
-        
+
         // Get or create user ID from localStorage (persists across sessions)
         function getUserId() {
             let userId = localStorage.getItem('cafs_chatbot_user_id');
@@ -1771,7 +1914,7 @@
             }
             return userId;
         }
-        
+
         // Get or create session ID from sessionStorage (new per tab/window)
         function getSessionId() {
             let sessionId = sessionStorage.getItem('cafs_chatbot_session_id');
@@ -1782,7 +1925,7 @@
             }
             return sessionId;
         }
-        
+
         // Initialize user/session on load
         const USER_ID = getUserId();
         const SESSION_ID = getSessionId();
@@ -1828,27 +1971,27 @@
                 const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
                 const rows = [];
                 let rowMatch;
-                
+
                 while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
                     rows.push(rowMatch[1]);
                 }
-                
+
                 if (rows.length === 0) return '';
-                
+
                 let listHtml = '<ul class="converted-table-list">';
-                
+
                 rows.forEach((rowHtml) => {
                     // Extract cells from row
                     const cellRegex = /<(td|th)[^>]*>([\s\S]*?)<\/(td|th)>/gi;
                     const cells = [];
                     let cellMatch;
-                    
+
                     while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
                         // Remove HTML tags from cell content
                         const cellText = cellMatch[2].replace(/<[^>]+>/g, '').trim();
                         cells.push(cellText);
                     }
-                    
+
                     if (cells.length >= 2) {
                         const key = cells[0];
                         const value = cells[1];
@@ -1857,32 +2000,122 @@
                         }
                     }
                 });
-                
+
                 listHtml += '</ul>';
                 return listHtml;
             });
         }
 
-        function renderMarkdown(text) {
-            try {
-                // Pre-process: ensure headings have proper spacing
-                let processed = text
-                    // Add newline before headings if not present
-                    .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')
-                    // Ensure proper line breaks for lists
-                    .replace(/([^\n])(\n[-*]\s)/g, '$1\n$2');
-                
-                let html = marked.parse(processed);
-                
-                // Convert tables to lists for better mobile experience
-                if (html.includes('<table>')) {
-                    html = convertTableToList(html);
+        function sanitizeHTML(html) {
+            // Create a temporary div to parse HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+
+            // Allowed tags and their allowed attributes
+            const allowedTags = {
+                'h3': [],
+                'p': [],
+                'ul': [],
+                'ol': [],
+                'li': [],
+                'strong': []
+            };
+
+            // Recursively sanitize
+            function sanitizeNode(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return node.cloneNode(true);
                 }
-                
-                return html;
+
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = node.tagName.toLowerCase();
+
+                    // If tag is allowed, keep it
+                    if (allowedTags.hasOwnProperty(tagName)) {
+                        const newNode = document.createElement(tagName);
+
+                        // Copy allowed attributes (none in our case, but structure is here)
+                        const allowedAttrs = allowedTags[tagName];
+                        for (let attr of allowedAttrs) {
+                            if (node.hasAttribute(attr)) {
+                                newNode.setAttribute(attr, node.getAttribute(attr));
+                            }
+                        }
+
+                        // Recursively sanitize children
+                        for (let child of Array.from(node.childNodes)) {
+                            const sanitizedChild = sanitizeNode(child);
+                            if (sanitizedChild) {
+                                newNode.appendChild(sanitizedChild);
+                            }
+                        }
+
+                        return newNode;
+                    } else {
+                        // Tag not allowed - convert to text or remove
+                        // If it's a block element, add line break
+                        const isBlock = ['div', 'h1', 'h2', 'h4', 'h5', 'h6'].includes(tagName);
+                        const fragment = document.createDocumentFragment();
+
+                        for (let child of Array.from(node.childNodes)) {
+                            const sanitizedChild = sanitizeNode(child);
+                            if (sanitizedChild) {
+                                fragment.appendChild(sanitizedChild);
+                            }
+                        }
+
+                        if (isBlock && fragment.childNodes.length > 0) {
+                            const br = document.createElement('br');
+                            fragment.insertBefore(br, fragment.firstChild);
+                        }
+
+                        return fragment.childNodes.length > 0 ? fragment : null;
+                    }
+                }
+
+                return null;
+            }
+
+            // Sanitize all nodes
+            const sanitized = document.createDocumentFragment();
+            for (let child of Array.from(temp.childNodes)) {
+                const sanitizedChild = sanitizeNode(child);
+                if (sanitizedChild) {
+                    if (sanitizedChild.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+                        sanitized.appendChild(sanitizedChild);
+                    } else {
+                        sanitized.appendChild(sanitizedChild);
+                    }
+                }
+            }
+
+            // Convert back to HTML string
+            const result = document.createElement('div');
+            result.appendChild(sanitized);
+            return result.innerHTML;
+        }
+
+        function renderHTML(text) {
+            try {
+                // If text doesn't contain HTML tags, wrap it in <p>
+                if (!text.includes('<') || !text.includes('>')) {
+                    // No HTML detected, wrap in paragraph
+                    return `<p>${text.replace(/\n/g, '<br>')}</p>`;
+                }
+
+                // Sanitize HTML to only allow safe tags
+                let sanitized = sanitizeHTML(text);
+
+                // If sanitization removed everything, fall back to escaped text
+                if (!sanitized || sanitized.trim() === '') {
+                    return `<p>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+                }
+
+                return sanitized;
             } catch (e) {
-                console.error('Markdown parse error:', e);
-                return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                console.error('HTML render error:', e);
+                // Fallback: escape and wrap in paragraph
+                return `<p>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
             }
         }
 
@@ -1893,17 +2126,17 @@
 
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            
+
             const avatarIcon = isUser ? USER_ICON : BOT_ICON;
-            
-            // Parse markdown for bot messages, escape HTML for user messages
+
+            // Render HTML for bot messages, escape HTML for user messages
             let formattedContent;
             if (isUser) {
                 formattedContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             } else {
-                formattedContent = `<div class="markdown-content">${renderMarkdown(content)}</div>`;
+                formattedContent = `<div class="markdown-content">${renderHTML(content)}</div>`;
             }
-            
+
             messageDiv.innerHTML = `
                 <div class="avatar">${avatarIcon}</div>
                 <div class="bubble">
@@ -1942,17 +2175,17 @@
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
-            
+
             if (!message || isTyping) return;
 
             // Add user message
             addMessage(message, true);
             chatHistory.push({ role: 'human', content: message });
-            
+
             // Clear input
             input.value = '';
             input.style.height = 'auto';
-            
+
             // Process with LLM (shared function)
             await processWithLLM(message);
             input.focus();
@@ -1962,5 +2195,5 @@
         document.getElementById('messageInput').focus();
     </script>
 </body>
-</html>
 
+</html>
