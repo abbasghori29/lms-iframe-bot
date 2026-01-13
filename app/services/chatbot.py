@@ -60,7 +60,7 @@ class ChatbotService:
         if settings.OPENAI_API_KEY:
             try:
                 primary_llm = ChatOpenAI(
-                    model="gpt-5",
+                    model="gpt-4o-mini",
                     temperature=0.5,
                     max_tokens=None,
                     timeout=None,
@@ -137,13 +137,15 @@ class ChatbotService:
         except Exception as e:
             raise Exception(f"Error loading vector store: {e}")
     
-    def _create_prompt_template(self, include_memory: bool = False, response_language: str = "en") -> ChatPromptTemplate:
+    def _create_prompt_template(self, include_memory: bool = False) -> ChatPromptTemplate:
         """Create the RAG prompt template"""
-        # Language-specific instructions
-        lang_note = "Respond in French. Use formal, academic French." if response_language == "fr" else "Respond in English."
-        
-        system_prompt = f"""You are an educational assistant.
-{lang_note}
+        system_prompt = """You are a helpful educational assistant for CAFS (Canadian Association of Financial Services).
+
+FIRST: Check if the user's message is a greeting like "hi", "hello", "bonjour", "hey", "good morning", etc.
+- If YES: Respond with a friendly greeting like "Hello! I'm here to help you with questions about CAFS courses, certifications, and training programs. What would you like to know?"
+- If NO: Answer ONLY from the Context provided below. If the answer is not in the Context, say "This information is not available in our documentation."
+
+Respond in the SAME LANGUAGE as the user's question.
 
 CRITICAL: YOU MUST USE ONLY HTML TAGS - NO MARKDOWN ALLOWED
 
@@ -172,8 +174,8 @@ EXAMPLE - CORRECT FORMAT:
 <h3>Course Requirements</h3>
 <p>The following elements are required:</p>
 <ol>
-  <li><strong>First Item:</strong> Description of the first item.</li>
-  <li><strong>Second Item:</strong> Description of the second item.</li>
+  <li><strong>Personal Circumstances:</strong> Understanding the client's situation.</li>
+  <li><strong>Financial Circumstances:</strong> Knowing the client's financial state.</li>
 </ol>
 <p>For additional details:</p>
 <ul>
@@ -181,16 +183,19 @@ EXAMPLE - CORRECT FORMAT:
   <li>Bullet point two</li>
 </ul>
 
+CRITICAL WARNING: When using <ol> for numbered lists, do NOT put numbers like "1." or "2." inside the <li> tags. The <ol> tag automatically adds numbers. 
+WRONG: <li>1. First item</li>
+CORRECT: <li>First item</li>
+
 REMEMBER: If you use markdown (**, -, #, etc.), your response will be broken. ONLY use HTML tags.
 
 CONTENT RULES:
-- Professional tone, no greetings.
+- Professional tone.
 - No document references (e.g. [Document 1]).
-- If info unavailable: "Information not provided in material."
 
 Context:
-{{context}}
-{{memory_context}}"""
+{context}
+{memory_context}"""
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
@@ -415,7 +420,7 @@ Translation:"""
         self,
         question: str,
         chat_history: Optional[List] = None,
-        k: int = 5,
+        k: int = 3,
         use_memory: bool = True,
         store_in_memory: bool = True,
         user_id: Optional[str] = None,
@@ -436,24 +441,40 @@ Translation:"""
         Returns:
             Dictionary with answer, sources, and memory info
         """
-        # Detect language of the question
-        detected_lang = self._detect_language(question)
+        import time
+        from concurrent.futures import ThreadPoolExecutor
+        total_start = time.time()
         
-        # Use original question directly for vector search (no translation)
-        docs = self.vector_store.similarity_search(question, k=k)
+        # Helper functions for parallel execution
+        def do_vector_search():
+            return self.vector_store.similarity_search(question, k=k)
         
-        # Format document context
+        def do_memory_search():
+            if use_memory and self.memory:
+                return self.memory.get_memory_context(question, k=2, user_id=user_id)
+            return ""
+        
+        # Step 1+2: Run vector search and memory search in PARALLEL
+        step_start = time.time()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            vector_future = executor.submit(do_vector_search)
+            memory_future = executor.submit(do_memory_search)
+            
+            docs = vector_future.result()
+            memory_context = memory_future.result()
+        
+        parallel_time = (time.time() - step_start) * 1000
+        print(f"⏱️ [1+2] Vector + Memory search (PARALLEL): {parallel_time:.1f}ms")
+        
+        memory_used = bool(memory_context)
+        
+        # Step 3: Format context
+        step_start = time.time()
         context = self._format_context(docs)
+        print(f"⏱️ [3] Format context: {(time.time() - step_start)*1000:.1f}ms")
         
-        # Get memory context (similar past conversations)
-        memory_context = ""
-        memory_used = False
-        if use_memory and self.memory:
-            memory_context = self.memory.get_memory_context(question, k=2, user_id=user_id)
-            if memory_context:
-                memory_used = True
-        
-        # Format chat history
+        # Step 4: Format chat history
+        step_start = time.time()
         messages = []
         if chat_history:
             for role, content in chat_history:
@@ -461,11 +482,15 @@ Translation:"""
                     messages.append(HumanMessage(content=content))
                 elif role == "ai" or role == "assistant":
                     messages.append(AIMessage(content=content))
+        print(f"⏱️ [4] Format chat history: {(time.time() - step_start)*1000:.1f}ms")
         
-        # Create prompt with language-specific instructions
-        prompt = self._create_prompt_template(include_memory=memory_used, response_language=detected_lang)
+        # Step 5: Create prompt
+        step_start = time.time()
+        prompt = self._create_prompt_template(include_memory=memory_used)
+        print(f"⏱️ [5] Create prompt: {(time.time() - step_start)*1000:.1f}ms")
         
-        # Create chain
+        # Step 6: Create chain
+        step_start = time.time()
         chain = (
             {
                 "context": lambda x: context,
@@ -477,15 +502,22 @@ Translation:"""
             | self.llm
             | StrOutputParser()
         )
+        print(f"⏱️ [6] Create chain: {(time.time() - step_start)*1000:.1f}ms")
         
-        # Generate response
+        # Step 7: LLM inference (THE BIG ONE)
+        step_start = time.time()
         try:
             answer = chain.invoke({"question": question})
-            # Clean up any document references the LLM might have added
+            llm_time = (time.time() - step_start)*1000
+            print(f"⏱️ [7] LLM inference: {llm_time:.1f}ms ⭐ {'SLOW!' if llm_time > 3000 else ''}")
+            
+            # Step 8: Clean answer
+            step_start = time.time()
             answer = self._clean_answer(answer)
+            print(f"⏱️ [8] Clean answer: {(time.time() - step_start)*1000:.1f}ms")
         except Exception as e:
             error_msg = str(e)
-            # Provide more helpful error messages
+            print(f"❌ LLM error after {(time.time() - step_start)*1000:.1f}ms: {error_msg}")
             if "model_decommissioned" in error_msg.lower() or "model" in error_msg.lower():
                 error_msg = f"LLM model error: {error_msg}. Please check your API key and model availability."
             elif "api" in error_msg.lower() or "key" in error_msg.lower():
@@ -500,10 +532,10 @@ Translation:"""
                 "error": error_msg,
             }
         
-        # Extract sources
+        # Step 9: Extract sources
+        step_start = time.time()
         sources = []
         for doc in docs:
-            # Get page number and convert to string
             page_num = doc.metadata.get("page_number") or doc.metadata.get("page")
             if page_num is not None:
                 page_str = str(page_num)
@@ -515,9 +547,10 @@ Translation:"""
                 "page": page_str,
                 "content_preview": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content,
             })
+        print(f"⏱️ [9] Extract sources: {(time.time() - step_start)*1000:.1f}ms")
         
-        # Store in memory with user context
-        if store_in_memory and self.memory and not any(x.get("error") for x in [{}]):
+        # Step 10: Store in memory (BACKGROUND - non-blocking)
+        def store_in_background():
             try:
                 self.memory.store_conversation(
                     question, 
@@ -526,8 +559,21 @@ Translation:"""
                     user_id=user_id,
                     session_id=session_id
                 )
+                print(f"⏱️ [BG] Memory stored successfully")
             except Exception as e:
                 print(f"Warning: Could not store in memory: {e}")
+        
+        if store_in_memory and self.memory and not any(x.get("error") for x in [{}]):
+            import threading
+            thread = threading.Thread(target=store_in_background, daemon=True)
+            thread.start()
+            print(f"⏱️ [10] Store in memory: BACKGROUND (non-blocking)")
+        
+        # Total time
+        total_time = (time.time() - total_start)*1000
+        print(f"⏱️ ═══════════════════════════════════════")
+        print(f"⏱️ TOTAL TIME: {total_time:.1f}ms ({total_time/1000:.2f}s)")
+        print(f"⏱️ ═══════════════════════════════════════")
         
         return {
             "answer": answer,
