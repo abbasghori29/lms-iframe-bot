@@ -420,7 +420,7 @@ Translation:"""
         self,
         question: str,
         chat_history: Optional[List] = None,
-        k: int = 3,
+        k: int = 5,
         use_memory: bool = True,
         store_in_memory: bool = True,
         user_id: Optional[str] = None,
