@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # LLM / AI
     OPENAI_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
-    VECTOR_STORE_PATH: str = "faiss_index"
+    VECTOR_STORE_PATH: str = "faiss_index_openai"
     EMBEDDING_API_URL: str = "https://lamhieu-lightweight-embeddings.hf.space/v1/embeddings"
     EMBEDDING_MODEL: str = "bge-m3"
     

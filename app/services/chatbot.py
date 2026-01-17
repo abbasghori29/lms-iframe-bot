@@ -12,14 +12,13 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 from app.core.config import settings
-from train_vector_db import CustomEmbeddings
 import re
 
 # Language detection
@@ -99,22 +98,23 @@ class ChatbotService:
         else:
             raise ValueError("No LLM API key configured. Set OPENAI_API_KEY or GROQ_API_KEY in .env")
         
-        # Initialize embeddings
-        self.embeddings = CustomEmbeddings(
-            api_url=settings.EMBEDDING_API_URL,
-            model=settings.EMBEDDING_MODEL,
-            delay_between_requests=0.1,  # Faster for chat (fewer requests)
+        # Initialize OpenAI embeddings (much better semantic search quality)
+        self.embeddings = OpenAIEmbeddings(
+            model="text-embedding-3-large",
+            api_key=settings.OPENAI_API_KEY,
         )
+        print("✓ Using OpenAI embeddings (text-embedding-3-large)")
         
         # Load vector store
         self._load_vector_store()
         
-        # Initialize memory service (Pinecone if available, else FAISS)
+        # Initialize memory service (Pinecone with OpenAI embeddings)
         try:
             self.memory = get_memory_service(embeddings=self.embeddings)
             print(f"✓ Memory service initialized ({MEMORY_TYPE})")
         except Exception as e:
             print(f"Warning: Could not initialize memory service ({MEMORY_TYPE}): {e}")
+            self.memory = None
     
     def _load_vector_store(self):
         """Load the FAISS vector store"""
@@ -143,7 +143,9 @@ class ChatbotService:
 
 FIRST: Check if the user's message is a greeting like "hi", "hello", "bonjour", "hey", "good morning", etc.
 - If YES: Respond with a friendly greeting like "Hello! I'm here to help you with questions about CAFS courses, certifications, and training programs. What would you like to know?"
-- If NO: Answer ONLY from the Context provided below. If the answer is not in the Context, say "This information is not available in our documentation."
+- If NO: Answer the question using the Context provided below. The Context contains relevant information - use it to provide a helpful, accurate answer.
+
+IMPORTANT: The Context below contains the answer to most questions. Read it carefully and provide a comprehensive answer based on the information provided. Only say you don't have information if the Context truly contains nothing relevant.
 
 Respond in the SAME LANGUAGE as the user's question.
 

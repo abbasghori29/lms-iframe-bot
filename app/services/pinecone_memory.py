@@ -10,15 +10,9 @@ from uuid import uuid4
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
 from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import settings
-
-# Import embeddings from project root
-import sys
-from pathlib import Path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-from train_vector_db import CustomEmbeddings
 
 
 class PineconeMemoryService:
@@ -27,11 +21,11 @@ class PineconeMemoryService:
     Supports per-user memory isolation via metadata filtering.
     """
     
-    def __init__(self, embeddings: Optional[CustomEmbeddings] = None):
-        self.embeddings = embeddings or CustomEmbeddings(
-            api_url=settings.EMBEDDING_API_URL,
-            model=settings.EMBEDDING_MODEL,
-            delay_between_requests=0.1,
+    def __init__(self, embeddings=None):
+        # Use OpenAI embeddings for compatibility with 3072-dimension index
+        self.embeddings = embeddings or OpenAIEmbeddings(
+            model="text-embedding-3-large",
+            api_key=settings.OPENAI_API_KEY,
         )
         self.pc: Optional[Pinecone] = None
         self.index = None
@@ -341,7 +335,7 @@ class PineconeMemoryService:
 _pinecone_memory_service: Optional[PineconeMemoryService] = None
 
 
-def get_pinecone_memory_service(embeddings: Optional[CustomEmbeddings] = None) -> PineconeMemoryService:
+def get_pinecone_memory_service(embeddings=None) -> PineconeMemoryService:
     """Get or create Pinecone memory service instance"""
     global _pinecone_memory_service
     if _pinecone_memory_service is None:
