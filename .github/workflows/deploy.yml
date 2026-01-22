@@ -156,7 +156,7 @@ jobs:
           # LLM / AI
           GROQ_API_KEY=$GROQ_KEY
           OPENAI_API_KEY=$OPENAI_KEY
-          VECTOR_STORE_PATH=faiss_index
+          VECTOR_STORE_PATH=faiss_index_openai
           EMBEDDING_API_URL=https://lamhieu-lightweight-embeddings.hf.space/v1/embeddings
           EMBEDDING_MODEL=bge-m3
           
@@ -185,18 +185,18 @@ jobs:
           pip install -r requirements.txt
           
           echo "📚 Checking vector store..."
-          if [ ! -d "faiss_index" ]; then
-            echo "⚠️  Vector store (faiss_index) not found!"
+          if [ ! -d "faiss_index_openai" ]; then
+            echo "⚠️  Vector store (faiss_index_openai) not found!"
             if [ -f "FIC-CSI-EN-2025.pdf" ] && [ -f "PDF complet de CSI.pdf" ]; then
               echo "📄 PDF files found, creating vector store (this will take several minutes)..."
               echo "   This is a one-time process that creates embeddings from PDFs."
-              python train_vector_db.py || echo "⚠️  Vector store creation failed, but continuing deployment"
+              python train_vector_db_openai.py || echo "⚠️  Vector store creation failed, but continuing deployment"
             else
               echo "❌ ERROR: Vector store not found and PDF files are missing!"
               echo "   The chatbot will not work without the vector store."
               echo "   You need to either:"
-              echo "   1. Upload the faiss_index directory to EC2, or"
-              echo "   2. Upload PDF files and run: python train_vector_db.py"
+              echo "   1. Upload the faiss_index_openai directory to EC2, or"
+              echo "   2. Upload PDF files and run: python train_vector_db_openai.py"
             fi
           else
             echo "✅ Vector store found"
@@ -250,15 +250,15 @@ jobs:
           
           echo ""
           echo "📁 Checking vector store directory:"
-          if [ -d "$APP_DIR/faiss_index" ]; then
+          if [ -d "$APP_DIR/faiss_index_openai" ]; then
             echo "✅ Vector store directory exists"
-            ls -la "$APP_DIR/faiss_index" | head -5
+            ls -la "$APP_DIR/faiss_index_openai" | head -5
           else
-            echo "❌ WARNING: Vector store directory (faiss_index) not found!"
+            echo "❌ WARNING: Vector store directory (faiss_index_openai) not found!"
             echo "   The chatbot will not work without the vector store."
             echo "   You need to either:"
-            echo "   1. Upload faiss_index directory to EC2, or"
-            echo "   2. Run train_vector_db.py on EC2 to create it"
+            echo "   1. Upload faiss_index_openai directory to EC2, or"
+            echo "   2. Run train_vector_db_openai.py on EC2 to create it"
           fi
           
           echo ""
