@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     
     # Note: Speech-to-text service will be loaded lazily when first used
     # This prevents blocking startup with large model downloads
-    print("ℹ Speech-to-text will be loaded on first use (lazy loading)")
+    print("INFO: Speech-to-text will be loaded on first use (lazy loading)")
     
     yield
     # Shutdown

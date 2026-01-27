@@ -38,7 +38,7 @@ class SpeechToTextService:
                 device="cpu",  # Use CPU for broader compatibility
                 compute_type="int8",  # Use int8 for faster inference
             )
-            print(f"✓ Whisper model '{self.model_size}' loaded successfully")
+            print(f"OK: Whisper model '{self.model_size}' loaded successfully")
         except Exception as e:
             print(f"Error loading Whisper model: {e}")
             raise
@@ -151,11 +151,11 @@ def init_speech_service():
         service = get_speech_service(model_size=settings.WHISPER_MODEL)
         print("")
         print("=" * 60)
-        print("✓ Speech-to-Text service ready!")
+        print("OK: Speech-to-Text service ready!")
         print("=" * 60 + "\n")
         return service
     except Exception as e:
-        print(f"\n❌ Failed to initialize speech service: {e}")
+        print(f"\nERROR: Failed to initialize speech service: {e}")
         print("Speech-to-text will be unavailable")
         print("=" * 60 + "\n")
         return None

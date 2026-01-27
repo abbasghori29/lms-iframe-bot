@@ -61,7 +61,7 @@ class MemoryService:
                     allow_dangerous_deserialization=True,
                 )
                 self._load_metadata()
-                print(f"✓ Loaded memory index with {len(self.vector_store.index_to_docstore_id)} entries")
+                print(f"OK: Loaded memory index with {len(self.vector_store.index_to_docstore_id)} entries")
             except Exception as e:
                 print(f"Could not load memory index: {e}. Creating new one.")
                 self._create_empty_index()
@@ -91,7 +91,7 @@ class MemoryService:
         
         # Save empty index to disk immediately
         self.save()
-        print("✓ Created new memory index")
+        print("OK: Created new memory index")
     
     def _load_metadata(self):
         """Load metadata from file"""
