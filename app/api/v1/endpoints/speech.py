@@ -26,7 +26,7 @@ def get_speech():
         _speech_service = get_speech_service(model_size=settings.WHISPER_MODEL)
         print("")
         print("=" * 60)
-        print("OK: Speech-to-Text service ready!")
+        print("✓ Speech-to-Text service ready!")
         print("=" * 60 + "\n")
     return _speech_service
 

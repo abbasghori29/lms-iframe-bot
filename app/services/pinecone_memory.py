@@ -56,7 +56,7 @@ class PineconeMemoryService:
                     region=settings.PINECONE_REGION
                 )
             )
-            print(f"OK: Created Pinecone index: {settings.PINECONE_INDEX_NAME}")
+            print(f"✓ Created Pinecone index: {settings.PINECONE_INDEX_NAME}")
         
         # Connect to index
         self.index = self.pc.Index(settings.PINECONE_INDEX_NAME)
@@ -70,7 +70,7 @@ class PineconeMemoryService:
         
         # Get index stats
         stats = self.index.describe_index_stats()
-        print(f"OK: Connected to Pinecone index: {settings.PINECONE_INDEX_NAME}")
+        print(f"✓ Connected to Pinecone index: {settings.PINECONE_INDEX_NAME}")
         print(f"  Total vectors: {stats.total_vector_count}")
     
     def store_conversation(

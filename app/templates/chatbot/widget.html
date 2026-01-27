@@ -2098,13 +2098,6 @@
 
         function renderHTML(text) {
             try {
-                // UI-side refusal normalization (last-resort)
-                if (text && typeof text === 'string') {
-                    const normalized = text.replace(/<[^>]+>/g, ' ').trim().toLowerCase();
-                    if (normalized === 'no information available.' || normalized === 'no information available') {
-                        text = "Sorry, I can only answer from the CAFS documentation I have. I don\u2019t have information on this topic right now. If you ask something tied to the CAFS materials, I\u2019ll be happy to help.";
-                    }
-                }
                 // If text doesn't contain HTML tags, wrap it in <p>
                 if (!text.includes('<') || !text.includes('>')) {
                     // No HTML detected, wrap in paragraph

@@ -78,17 +78,8 @@ async def chat(
         # Log the full error for debugging
         import traceback
         error_detail = str(e)
-        print(f"Chat error: {error_detail}", flush=True)
-        print(traceback.format_exc(), flush=True)
-        try:
-            from pathlib import Path
-            log_path = Path.cwd() / "server_error.log"
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write("\n" + "="*80 + "\n")
-                f.write("ERROR: " + error_detail + "\n")
-                f.write(traceback.format_exc() + "\n")
-        except Exception:
-            pass
+        print(f"Chat error: {error_detail}")
+        print(traceback.format_exc())
         
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
