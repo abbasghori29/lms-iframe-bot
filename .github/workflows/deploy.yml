@@ -84,17 +84,17 @@ jobs:
           if [ "$OS" = "amzn" ] || [ "$OS" = "rhel" ] || [ "$OS" = "centos" ]; then
             # Amazon Linux / RHEL / CentOS
             sudo yum update -y
-            sudo yum install -y git python3.11 python3.11-pip python3.11-devel gcc gcc-c++ make cmake
+            sudo yum install -y git python3.11 python3.11-pip python3.11-devel gcc gcc-c++ make cmake nginx openssl
             # Try to install ffmpeg if available
             sudo yum install -y ffmpeg ffmpeg-devel 2>/dev/null || echo "⚠️  ffmpeg not available in default repos, skipping"
           elif [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
             # Ubuntu / Debian
             sudo apt-get update -y
-            sudo apt-get install -y git python3.11 python3.11-venv python3.11-dev python3-pip build-essential gcc g++ make cmake
+            sudo apt-get install -y git python3.11 python3.11-venv python3.11-dev python3-pip build-essential gcc g++ make cmake nginx openssl
             sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev 2>/dev/null || echo "⚠️  ffmpeg installation failed, continuing"
           else
             echo "⚠️  Unknown OS, trying to install basic packages..."
-            sudo yum install -y git python3 python3-pip 2>/dev/null || sudo apt-get install -y git python3 python3-pip 2>/dev/null || true
+            sudo yum install -y git python3 python3-pip nginx openssl 2>/dev/null || sudo apt-get install -y git python3 python3-pip nginx openssl 2>/dev/null || true
           fi
           
           # Verify Python is available
@@ -129,6 +129,8 @@ jobs:
           
           echo "📝 Creating/updating .env file..."
           SECRET_RANDOM=$(openssl rand -hex 32)
+          # Get EC2 public IP for CORS
+          EC2_IP_FOR_CORS=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'localhost')
           cat > .env << EOF
           # Application Settings
           PROJECT_NAME=LMS Bot
@@ -146,8 +148,8 @@ jobs:
           ALGORITHM=HS256
           ACCESS_TOKEN_EXPIRE_MINUTES=30
           
-          # CORS
-          BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8005"]
+          # CORS (includes HTTPS for microphone access)
+          BACKEND_CORS_ORIGINS=["https://$EC2_IP_FOR_CORS","http://localhost:3000","http://localhost:8005"]
           
           # Logging
           LOG_LEVEL=INFO
@@ -231,6 +233,100 @@ jobs:
           WantedBy=multi-user.target
           SERVICE_EOF
           
+          # Set up SSL/HTTPS with Nginx
+          echo "🔒 Setting up SSL/HTTPS with Nginx..."
+          
+          # Get EC2 public IP
+          EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
+          
+          # Create SSL directory and generate self-signed certificate
+          sudo mkdir -p /etc/nginx/ssl
+          if [ ! -f /etc/nginx/ssl/lms-bot.crt ]; then
+            echo "🔐 Generating self-signed SSL certificate..."
+            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+              -keyout /etc/nginx/ssl/lms-bot.key \
+              -out /etc/nginx/ssl/lms-bot.crt \
+              -subj "/C=US/ST=State/L=City/O=LMS Bot/CN=$EC2_IP" 2>/dev/null || echo "⚠️  Certificate generation failed, continuing..."
+            sudo chmod 600 /etc/nginx/ssl/lms-bot.key
+            sudo chmod 644 /etc/nginx/ssl/lms-bot.crt
+          else
+            echo "✅ SSL certificate already exists"
+          fi
+          
+          # Create Nginx configuration
+          echo "📝 Creating Nginx configuration..."
+          sudo tee /etc/nginx/conf.d/lms-bot.conf > /dev/null << NGINX_EOF
+          # HTTP to HTTPS redirect
+          server {
+              listen 80;
+              server_name $EC2_IP;
+              return 301 https://\$host\$request_uri;
+          }
+          
+          # HTTPS server
+          server {
+              listen 443 ssl http2;
+              server_name $EC2_IP;
+              
+              ssl_certificate /etc/nginx/ssl/lms-bot.crt;
+              ssl_certificate_key /etc/nginx/ssl/lms-bot.key;
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_ciphers HIGH:!aNULL:!MD5;
+              ssl_prefer_server_ciphers on;
+              ssl_session_cache shared:SSL:10m;
+              ssl_session_timeout 10m;
+              
+              add_header Strict-Transport-Security "max-age=31536000" always;
+              add_header X-Frame-Options "SAMEORIGIN" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              add_header X-XSS-Protection "1; mode=block" always;
+              
+              client_max_body_size 10M;
+              
+              location / {
+                  proxy_pass http://127.0.0.1:8005;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_set_header X-Forwarded-Host \$host;
+                  proxy_set_header X-Forwarded-Port \$server_port;
+                  proxy_connect_timeout 60s;
+                  proxy_send_timeout 60s;
+                  proxy_read_timeout 60s;
+              }
+              
+              location /ws {
+                  proxy_pass http://127.0.0.1:8005;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+              }
+          }
+          NGINX_EOF
+          
+          # Test Nginx configuration
+          sudo nginx -t || echo "⚠️  Nginx configuration test failed"
+          
+          # Start and enable Nginx
+          sudo systemctl enable nginx
+          sudo systemctl restart nginx || echo "⚠️  Nginx restart failed"
+          
+          # Configure firewall (if firewalld is running)
+          if systemctl is-active --quiet firewalld; then
+            echo "🔥 Configuring firewall for HTTPS..."
+            sudo firewall-cmd --permanent --add-service=https 2>/dev/null || true
+            sudo firewall-cmd --permanent --add-service=http 2>/dev/null || true
+            sudo firewall-cmd --reload 2>/dev/null || true
+          fi
+          
           # Reload systemd and enable/start service
           sudo systemctl daemon-reload
           sudo systemctl enable lms-bot
@@ -275,12 +371,18 @@ jobs:
           fi
           
           echo ""
-          echo "🌐 Application should be available at: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'EC2_IP'):8005"
+          EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'EC2_IP')
+          echo "🌐 Application is available at:"
+          echo "   - HTTPS: https://$EC2_IP (recommended - microphone will work)"
+          echo "   - HTTP:  http://$EC2_IP:8005 (direct, microphone won't work)"
           echo ""
-          echo "⚠️  IMPORTANT: Make sure your EC2 Security Group allows inbound traffic on port 8005!"
-          echo "   - Type: Custom TCP"
-          echo "   - Port: 8005"
-          echo "   - Source: 0.0.0.0/0 (or your specific IP)"
+          echo "⚠️  IMPORTANT: Make sure your EC2 Security Group allows inbound traffic on:"
+          echo "   - Port 443 (HTTPS) - Type: HTTPS, Source: 0.0.0.0/0"
+          echo "   - Port 80 (HTTP redirect) - Type: HTTP, Source: 0.0.0.0/0"
+          echo "   - Port 8005 (optional, direct access) - Type: Custom TCP, Source: 0.0.0.0/0"
+          echo ""
+          echo "📝 Note: HTTPS uses a self-signed certificate. Browsers will show a security warning."
+          echo "   Click 'Advanced' → 'Proceed to site' to accept it."
           DEPLOY_SCRIPT
 
       - name: Health Check
@@ -290,5 +392,6 @@ jobs:
           echo "⏳ Waiting for application to start..."
           sleep 15
           echo "🏥 Checking application health..."
-          echo "📍 Attempting to connect to http://${{ secrets.EC2_HOST }}:8005/health"
-          curl -v --max-time 10 --connect-timeout 5 http://${{ secrets.EC2_HOST }}:8005/health && echo "✅ Health check passed!" || echo "⚠️  Health check failed - Check: 1) Security group allows port 8005, 2) Service logs for errors, 3) Application is running"
+          echo "📍 Attempting to connect to https://${{ secrets.EC2_HOST }}/health (HTTPS)"
+          curl -k -v --max-time 10 --connect-timeout 5 https://${{ secrets.EC2_HOST }}/health && echo "✅ HTTPS health check passed!" || echo "⚠️  HTTPS health check failed, trying HTTP..."
+          curl -v --max-time 10 --connect-timeout 5 http://${{ secrets.EC2_HOST }}:8005/health && echo "✅ HTTP health check passed!" || echo "⚠️  Health check failed - Check: 1) Security group allows ports 443/80, 2) Service logs for errors, 3) Application is running"
