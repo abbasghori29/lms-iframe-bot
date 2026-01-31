@@ -255,18 +255,19 @@ jobs:
           
           # Create Nginx configuration
           echo "📝 Creating Nginx configuration..."
-          sudo tee /etc/nginx/conf.d/lms-bot.conf > /dev/null << NGINX_EOF
+          # Use _ as catch-all server_name (valid for IP-based access)
+          sudo tee /etc/nginx/conf.d/lms-bot.conf > /dev/null << 'NGINX_EOF'
           # HTTP to HTTPS redirect
           server {
               listen 80;
-              server_name $EC2_IP;
-              return 301 https://\$host\$request_uri;
+              server_name _;
+              return 301 https://$host$request_uri;
           }
           
           # HTTPS server
           server {
               listen 443 ssl http2;
-              server_name $EC2_IP;
+              server_name _;
               
               ssl_certificate /etc/nginx/ssl/lms-bot.crt;
               ssl_certificate_key /etc/nginx/ssl/lms-bot.key;
@@ -286,14 +287,14 @@ jobs:
               location / {
                   proxy_pass http://127.0.0.1:8005;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
-                  proxy_set_header Host \$host;
-                  proxy_set_header X-Real-IP \$remote_addr;
-                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto \$scheme;
-                  proxy_set_header X-Forwarded-Host \$host;
-                  proxy_set_header X-Forwarded-Port \$server_port;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_set_header X-Forwarded-Host $host;
+                  proxy_set_header X-Forwarded-Port $server_port;
                   proxy_connect_timeout 60s;
                   proxy_send_timeout 60s;
                   proxy_read_timeout 60s;
@@ -302,12 +303,12 @@ jobs:
               location /ws {
                   proxy_pass http://127.0.0.1:8005;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
-                  proxy_set_header Host \$host;
-                  proxy_set_header X-Real-IP \$remote_addr;
-                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
               }
           }
           NGINX_EOF
