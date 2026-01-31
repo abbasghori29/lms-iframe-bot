@@ -17,7 +17,6 @@ sudo yum install -y python3.11 python3.11-pip python3.11-devel git
 # Install system dependencies for Python packages
 echo "📦 Installing build dependencies..."
 sudo yum install -y gcc gcc-c++ make cmake
-sudo yum install -y ffmpeg ffmpeg-devel  # For faster-whisper/av
 
 # Create app directory
 APP_DIR="/home/ec2-user/lms-bot"
@@ -86,8 +85,7 @@ PINECONE_INDEX_NAME=cafs-chatbot-memory
 PINECONE_CLOUD=aws
 PINECONE_REGION=us-east-1
 
-# Speech-to-Text
-WHISPER_MODEL=base
+# Speech-to-Text uses OpenAI gpt-4o-transcribe (no config needed)
 EOF
     echo "⚠️  Please edit .env file with your actual configuration!"
 fi

@@ -24,9 +24,8 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     
-    # Note: Speech-to-text service will be loaded lazily when first used
-    # This prevents blocking startup with large model downloads
-    print("ℹ Speech-to-text will be loaded on first use (lazy loading)")
+    # Speech-to-text uses OpenAI API (gpt-4o-transcribe) - no model download needed
+    print("ℹ Speech-to-text ready (OpenAI gpt-4o-transcribe)")
     
     yield
     # Shutdown

@@ -51,8 +51,7 @@ class Settings(BaseSettings):
     PINECONE_CLOUD: str = "aws"  # or "gcp", "azure"
     PINECONE_REGION: str = "us-east-1"  # e.g., "us-east-1", "eu-west-1"
     
-    # Speech-to-Text (Whisper)
-    WHISPER_MODEL: str = "large-v3"  # Options: tiny, base, small, medium, large-v3
+    # Speech-to-Text (uses OpenAI gpt-4o-transcribe - no config needed)
 
     model_config = SettingsConfigDict(
         env_file=".env",

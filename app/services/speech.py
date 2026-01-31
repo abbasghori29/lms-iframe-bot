@@ -1,95 +1,72 @@
 """
-Speech-to-Text Service using Faster Whisper
+Speech-to-Text Service using OpenAI gpt-4o-transcribe
 """
 import os
 import tempfile
 from typing import Optional
-from pathlib import Path
 
-from faster_whisper import WhisperModel
+from openai import OpenAI
 
 from app.core.config import settings
 
 
 class SpeechToTextService:
     """
-    Speech-to-Text service using Faster Whisper for transcription.
-    Uses the 'base' model by default for balance of speed and accuracy.
+    Speech-to-Text service using OpenAI's gpt-4o-transcribe model.
+    Fast, accurate, and supports multiple languages.
     """
     
-    def __init__(self, model_size: str = "base"):
-        """
-        Initialize the Whisper model.
-        
-        Args:
-            model_size: Model size - 'tiny', 'base', 'small', 'medium', 'large-v3'
-                       Smaller = faster, Larger = more accurate
-        """
-        self.model_size = model_size
-        self.model: Optional[WhisperModel] = None
+    def __init__(self):
+        """Initialize the OpenAI client."""
+        self.client: Optional[OpenAI] = None
         self._initialize()
     
     def _initialize(self):
-        """Load the Whisper model"""
+        """Initialize OpenAI client"""
         try:
-            print(f"Loading Whisper model: {self.model_size}...")
-            self.model = WhisperModel(
-                self.model_size,
-                device="cpu",  # Use CPU for broader compatibility
-                compute_type="int8",  # Use int8 for faster inference
-            )
-            print(f"✓ Whisper model '{self.model_size}' loaded successfully")
+            if not settings.OPENAI_API_KEY:
+                raise ValueError("OPENAI_API_KEY not configured")
+            
+            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            print("✓ OpenAI Speech-to-Text service initialized (gpt-4o-transcribe)")
         except Exception as e:
-            print(f"Error loading Whisper model: {e}")
+            print(f"Error initializing OpenAI client: {e}")
             raise
     
-    def transcribe(self, audio_data: bytes, language: str = "en") -> dict:
+    def transcribe(self, audio_data: bytes, language: Optional[str] = None, file_extension: str = "webm") -> dict:
         """
         Transcribe audio data to text.
         
         Args:
-            audio_data: Raw audio bytes (supports webm, wav, mp3, etc.)
-            language: Language code (e.g., 'en', 'fr', 'es')
+            audio_data: Raw audio bytes (supports webm, wav, mp3, m4a, etc.)
+            language: Optional language code (e.g., 'en', 'fr'). If None, auto-detects.
+            file_extension: File extension for the audio data (e.g., 'webm', 'mp4', 'ogg')
         
         Returns:
             Dictionary with transcription result
         """
-        if not self.model:
-            raise RuntimeError("Whisper model not initialized")
+        if not self.client:
+            raise RuntimeError("OpenAI client not initialized")
         
-        # Save audio to temporary file
-        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_file:
+        # Save audio to temporary file with correct extension
+        with tempfile.NamedTemporaryFile(suffix=f".{file_extension}", delete=False) as temp_file:
             temp_file.write(audio_data)
             temp_path = temp_file.name
         
         try:
-            # Transcribe
-            segments, info = self.model.transcribe(
-                temp_path,
-                language=language,
-                beam_size=5,
-                vad_filter=True,  # Voice Activity Detection for better results
-            )
-            
-            # Combine all segments
-            full_text = ""
-            segment_list = []
-            
-            for segment in segments:
-                full_text += segment.text + " "
-                segment_list.append({
-                    "start": segment.start,
-                    "end": segment.end,
-                    "text": segment.text,
-                })
+            # Open the audio file
+            with open(temp_path, "rb") as audio_file:
+                # Transcribe using OpenAI
+                transcription = self.client.audio.transcriptions.create(
+                    model="gpt-4o-transcribe",
+                    file=audio_file,
+                    language=language,  # None = auto-detect
+                )
             
             return {
                 "success": True,
-                "text": full_text.strip(),
-                "language": info.language,
-                "language_probability": info.language_probability,
-                "duration": info.duration,
-                "segments": segment_list,
+                "text": transcription.text,
+                "language": language or "auto",
             }
             
         except Exception as e:
@@ -105,50 +82,67 @@ class SpeechToTextService:
             except:
                 pass
     
-    def transcribe_file(self, file_path: str, language: str = "en") -> dict:
+    def transcribe_file(self, file_path: str, language: Optional[str] = None) -> dict:
         """
         Transcribe an audio file.
         
         Args:
             file_path: Path to audio file
-            language: Language code
+            language: Optional language code
         
         Returns:
             Dictionary with transcription result
         """
-        with open(file_path, "rb") as f:
-            audio_data = f.read()
-        return self.transcribe(audio_data, language)
+        if not self.client:
+            raise RuntimeError("OpenAI client not initialized")
+        
+        try:
+            with open(file_path, "rb") as audio_file:
+                transcription = self.client.audio.transcriptions.create(
+                    model="gpt-4o-transcribe",
+                    file=audio_file,
+                    language=language,
+                )
+            
+            return {
+                "success": True,
+                "text": transcription.text,
+                "language": language or "auto",
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "text": "",
+                "error": str(e),
+            }
 
 
 # Singleton instance
 _speech_service: Optional[SpeechToTextService] = None
 
 
-def get_speech_service(model_size: str = "base") -> SpeechToTextService:
+def get_speech_service() -> SpeechToTextService:
     """Get or create speech service instance"""
     global _speech_service
     if _speech_service is None:
-        _speech_service = SpeechToTextService(model_size=model_size)
+        _speech_service = SpeechToTextService()
     return _speech_service
 
 
 def init_speech_service():
     """
     Initialize speech service on startup.
-    This pre-downloads and loads the model so it's ready when users need it.
     Called from FastAPI lifespan startup.
     """
-    from app.core.config import settings
     print("\n" + "=" * 60)
     print("🎤 INITIALIZING SPEECH-TO-TEXT SERVICE")
     print("=" * 60)
-    print(f"Model: {settings.WHISPER_MODEL}")
-    print("Note: First time may download the model (this can take a few minutes)")
+    print("Model: OpenAI gpt-4o-transcribe")
     print("")
     
     try:
-        service = get_speech_service(model_size=settings.WHISPER_MODEL)
+        service = get_speech_service()
         print("")
         print("=" * 60)
         print("✓ Speech-to-Text service ready!")
@@ -159,4 +153,3 @@ def init_speech_service():
         print("Speech-to-text will be unavailable")
         print("=" * 60 + "\n")
         return None
-

@@ -70,6 +70,10 @@ class ChatResponse(BaseModel):
         default=None,
         description="The session ID used for this request"
     )
+    contextualized_query: Optional[str] = Field(
+        default=None,
+        description="The rewritten query used for retrieval (for follow-up questions)"
+    )
     error: Optional[str] = Field(default=None, description="Error message if any")
 
 

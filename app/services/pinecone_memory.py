@@ -169,20 +169,40 @@ class PineconeMemoryService:
         self,
         query: str,
         k: int = 2,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None
     ) -> str:
         """
         Get formatted memory context for a query.
+        
+        Now enhanced to better support follow-up questions by:
+        1. First checking recent session history (most relevant for follow-ups)
+        2. Then falling back to semantic search
         
         Args:
             query: Current query
             k: Number of similar conversations
             user_id: User ID to filter by
+            session_id: Session ID for recent context
         
         Returns:
             Formatted context string
         """
-        # First try user's own history
+        context_parts = []
+        
+        # For follow-ups, recent session history is most valuable
+        if session_id and user_id:
+            recent = self.get_recent_session_context(user_id, session_id, limit=3)
+            if recent:
+                context_parts.append("Recent conversation in this session:")
+                for i, conv in enumerate(recent, 1):
+                    context_parts.append(
+                        f"\n[Recent {i}]\n"
+                        f"You asked: {conv['question']}\n"
+                        f"I answered: {conv['answer'][:400]}..."
+                    )
+        
+        # Also do semantic search for broader context
         similar = self.search_similar(query, k=k, user_id=user_id, include_global=False)
         
         # If not enough results, include global
@@ -190,24 +210,78 @@ class PineconeMemoryService:
             global_similar = self.search_similar(query, k=k-len(similar), include_global=True)
             similar.extend(global_similar)
         
-        if not similar:
-            return ""
+        if similar:
+            if context_parts:
+                context_parts.append("\nRelated past conversations:")
+            else:
+                context_parts.append("Previous relevant conversations:")
+            
+            for i, conv in enumerate(similar, 1):
+                # Cosine similarity: higher is better (0.7+ is good)
+                if conv["score"] > 0.5:
+                    is_own = " (from your history)" if user_id and conv.get("user_id") == user_id else ""
+                    context_parts.append(
+                        f"\n[Past Q&A {i}{is_own}]\n"
+                        f"User asked: {conv['question']}\n"
+                        f"Answer: {conv['answer'][:300]}..."
+                    )
         
-        context_parts = ["Previous relevant conversations:"]
-        for i, conv in enumerate(similar, 1):
-            # Cosine similarity: higher is better (0.7+ is good)
-            if conv["score"] > 0.5:
-                is_own = " (from your history)" if user_id and conv.get("user_id") == user_id else ""
-                context_parts.append(
-                    f"\n[Past Q&A {i}{is_own}]\n"
-                    f"User asked: {conv['question']}\n"
-                    f"Answer: {conv['answer'][:300]}..."
-                )
-        
-        if len(context_parts) == 1:
+        if not context_parts:
             return ""
         
         return "\n".join(context_parts)
+    
+    def get_recent_session_context(
+        self,
+        user_id: str,
+        session_id: str,
+        limit: int = 3
+    ) -> List[Dict]:
+        """
+        Get the most recent conversations from a session.
+        This is crucial for handling follow-up questions like "why?" or "elaborate".
+        
+        Unlike semantic search, this returns the actual recent context
+        regardless of query similarity.
+        
+        Args:
+            user_id: User ID
+            session_id: Session ID
+            limit: Number of recent conversations to return
+        
+        Returns:
+            List of recent conversations in chronological order
+        """
+        try:
+            results = self.vector_store.similarity_search(
+                query="",  # Empty query - we just want to filter by metadata
+                k=limit * 2,  # Fetch more to filter
+                filter={
+                    "$and": [
+                        {"user_id": {"$eq": user_id}},
+                        {"session_id": {"$eq": session_id}}
+                    ]
+                }
+            )
+            
+            conversations = []
+            for doc in results:
+                conversations.append({
+                    "id": doc.metadata.get("conv_id", ""),
+                    "question": doc.metadata.get("question", ""),
+                    "answer": doc.metadata.get("answer", ""),
+                    "timestamp": doc.metadata.get("timestamp", ""),
+                })
+            
+            # Sort by timestamp (most recent last for chronological order)
+            conversations.sort(key=lambda x: x.get("timestamp", ""))
+            
+            # Return the most recent ones
+            return conversations[-limit:] if len(conversations) > limit else conversations
+            
+        except Exception as e:
+            print(f"Warning: Could not get recent session context: {e}")
+            return []
     
     def get_user_history(self, user_id: str, limit: int = 20) -> List[Dict]:
         """

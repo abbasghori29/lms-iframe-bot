@@ -15,8 +15,11 @@ A production-ready, scalable FastAPI application structure with best practices.
 - ✅ Environment-based configuration
 - ✅ Type hints throughout
 - ✅ **RAG-powered Chatbot** with FAISS vector database
-- ✅ **Groq LLM integration** (deepseek-r1-distill-llama-70b)
+- ✅ **LangGraph conversation handling** with smart follow-up support
+- ✅ **OpenAI GPT-4o** for LLM and embeddings
+- ✅ **Speech-to-Text** using OpenAI gpt-4o-transcribe
 - ✅ **PDF document processing** and vectorization
+- ✅ **Pinecone** for conversation memory
 
 ## Project Structure
 
@@ -79,10 +82,13 @@ SECRET_KEY=your-secret-key-here
 LOG_LEVEL=INFO
 
 # LLM / AI Configuration
-GROQ_API_KEY=your-groq-api-key-here
+OPENAI_API_KEY=your-openai-api-key-here
+GROQ_API_KEY=your-groq-api-key-here  # Optional fallback
 VECTOR_STORE_PATH=faiss_index_openai
-EMBEDDING_API_URL=https://lamhieu-lightweight-embeddings.hf.space/v1/embeddings
-EMBEDDING_MODEL=bge-m3
+
+# Pinecone (for conversation memory)
+PINECONE_API_KEY=your-pinecone-api-key-here
+PINECONE_INDEX_NAME=cafs-chatbot-memory
 ```
 
 ## Running the Application
@@ -165,8 +171,9 @@ This project includes automated deployment to AWS EC2 using GitHub Actions.
    - `EC2_APP_DIR`: Application directory path (optional, default: `/home/ec2-user/lms-bot`)
    
    **API Keys (automatically added to .env on EC2):**
-   - `GROQ_API_KEY`: Your Groq API key
-   - `PINECONE_API_KEY`: Your Pinecone API key
+   - `OPENAI_API_KEY`: Your OpenAI API key (required for LLM, embeddings, and speech-to-text)
+   - `GROQ_API_KEY`: Your Groq API key (optional fallback)
+   - `PINECONE_API_KEY`: Your Pinecone API key (for conversation memory)
 
 2. **How to get your SSH key content**:
    ```bash
@@ -316,6 +323,27 @@ Visit http://localhost:8005/docs and use the `/api/v1/chat/chat` endpoint.
 
 - `POST /api/v1/chat/chat` - Chat with the RAG-powered assistant
 - `GET /api/v1/chat/health` - Check chatbot service health
+
+### Speech-to-Text API
+
+The speech-to-text service uses OpenAI's `gpt-4o-transcribe` model for accurate transcription.
+
+**Transcribe audio:**
+```bash
+curl -X POST "http://localhost:8005/api/v1/speech/transcribe" \
+  -F "audio=@audio.mp3"
+```
+
+**With specific language:**
+```bash
+curl -X POST "http://localhost:8005/api/v1/speech/transcribe" \
+  -F "audio=@audio.mp3" \
+  -F "language=fr"
+```
+
+**Endpoints:**
+- `POST /api/v1/speech/transcribe` - Transcribe audio file to text
+- `GET /api/v1/speech/health` - Check speech service health
 
 ## Adding New Features
 

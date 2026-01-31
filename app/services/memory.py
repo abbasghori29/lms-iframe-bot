@@ -356,7 +356,8 @@ class MemoryService:
         self, 
         query: str, 
         k: int = 2, 
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None
     ) -> str:
         """
         Get formatted memory context for a query.
@@ -365,27 +366,46 @@ class MemoryService:
             query: Current query
             k: Number of similar conversations to include
             user_id: Optional user ID to prioritize user's history
+            session_id: Optional session ID for recent context (enhanced for follow-ups)
         
         Returns:
             Formatted context string
         """
+        context_parts = []
+        
+        # For follow-ups, get recent session history first
+        if session_id and user_id:
+            recent = self.get_session_history(user_id, session_id)
+            if recent:
+                recent_items = recent[-3:]  # Last 3 conversations
+                context_parts.append("Recent conversation in this session:")
+                for i, conv in enumerate(recent_items, 1):
+                    context_parts.append(
+                        f"\n[Recent {i}]\n"
+                        f"You asked: {conv.get('question', '')}\n"
+                        f"I answered: {conv.get('answer', '')[:400]}..."
+                    )
+        
+        # Also do semantic search
         similar = self.search_similar(query, k=k, user_id=user_id)
         
-        if not similar:
-            return ""
+        if similar:
+            if context_parts:
+                context_parts.append("\nRelated past conversations:")
+            else:
+                context_parts.append("Previous relevant conversations:")
+                
+            for i, conv in enumerate(similar, 1):
+                # Only include if score is good (lower is better in L2)
+                if conv["score"] < 500:  # Threshold for relevance
+                    is_own = " (from your previous chat)" if user_id and conv.get("user_id") == user_id else ""
+                    context_parts.append(
+                        f"\n[Past Q&A {i}{is_own}]\n"
+                        f"User asked: {conv['question']}\n"
+                        f"Answer: {conv['answer'][:300]}..."
+                    )
         
-        context_parts = ["Previous relevant conversations:"]
-        for i, conv in enumerate(similar, 1):
-            # Only include if score is good (lower is better in L2)
-            if conv["score"] < 500:  # Threshold for relevance
-                is_own = " (from your previous chat)" if user_id and conv.get("user_id") == user_id else ""
-                context_parts.append(
-                    f"\n[Past Q&A {i}{is_own}]\n"
-                    f"User asked: {conv['question']}\n"
-                    f"Answer: {conv['answer'][:300]}..."
-                )
-        
-        if len(context_parts) == 1:  # Only header, no relevant conversations
+        if not context_parts:
             return ""
         
         return "\n".join(context_parts)

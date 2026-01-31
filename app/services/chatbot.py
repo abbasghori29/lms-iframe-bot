@@ -1,6 +1,10 @@
 """
 Chatbot service with RAG (Retrieval Augmented Generation)
 Includes memory for past Q&A
+
+Now uses LangGraph for proper conversation handling and follow-up support.
+The key improvement is query contextualization - rewriting follow-up questions
+like "why?" into full standalone questions before vector retrieval.
 """
 import os
 import sys
@@ -37,6 +41,9 @@ if settings.PINECONE_API_KEY:
 else:
     from app.services.memory import get_memory_service, MemoryService
     MEMORY_TYPE = "faiss"
+
+# Flag to enable LangGraph-based conversation handling (fixes follow-up issues)
+USE_LANGGRAPH = True
 
 
 class ChatbotService:
@@ -105,8 +112,11 @@ class ChatbotService:
         )
         print("✓ Using OpenAI embeddings (text-embedding-3-large)")
         
-        # Load vector store
-        self._load_vector_store()
+        # Load vector store (skip if using LangGraph - it has its own)
+        if not USE_LANGGRAPH:
+            self._load_vector_store()
+        else:
+            print("✓ Skipping vector store load (delegating to LangGraph service)")
         
         # Initialize memory service (Pinecone with OpenAI embeddings)
         try:
@@ -466,6 +476,90 @@ Translation:"""
         
         return "\n".join(context_parts)
     
+    def _is_followup_question(self, question: str, chat_history: Optional[List] = None) -> bool:
+        """
+        Detect if a question is likely a follow-up that needs contextualization.
+        
+        Follow-up indicators:
+        - Short questions (< 6 words)
+        - Questions starting with why, how, what, etc.
+        - Questions referencing "it", "this", "that"
+        - Questions asking for elaboration
+        """
+        if not chat_history or len(chat_history) < 2:
+            return False
+        
+        question_lower = question.lower().strip()
+        words = question_lower.split()
+        
+        # Short questions are likely follow-ups
+        if len(words) <= 5:
+            return True
+        
+        # Follow-up starters
+        followup_starters = [
+            "why", "how", "what", "can you", "could you", "please",
+            "elaborate", "explain", "more", "detail", "example",
+            "pourquoi", "comment", "quoi", "pouvez", "expliquer", "plus"
+        ]
+        
+        if any(question_lower.startswith(s) for s in followup_starters):
+            return True
+        
+        # Pronouns that reference previous context
+        context_refs = ["it", "this", "that", "these", "those", "them", 
+                       "il", "elle", "cela", "ça", "ce", "ces"]
+        if any(ref in words for ref in context_refs):
+            return True
+        
+        return False
+    
+    def _contextualize_query(self, question: str, chat_history: List) -> str:
+        """
+        Rewrite a follow-up question into a standalone question.
+        This is the KEY function that fixes the follow-up problem.
+        """
+        if not chat_history or len(chat_history) < 2:
+            return question
+        
+        # Build context from recent history
+        recent_history = chat_history[-4:]  # Last 2 exchanges
+        history_text = "\n".join([
+            f"{'User' if role == 'human' else 'Assistant'}: {content[:200]}"
+            for role, content in recent_history
+        ])
+        
+        contextualize_prompt = f"""You are a query rewriter. Rewrite the follow-up question as a standalone question.
+
+Conversation history:
+{history_text}
+
+Follow-up question: {question}
+
+Rules:
+1. If already clear and standalone, return unchanged
+2. Include the topic/subject from the conversation
+3. Keep the same language (English/French)
+4. Keep it concise
+5. Return ONLY the rewritten question, nothing else
+
+Standalone question:"""
+        
+        try:
+            response = self.llm.invoke(contextualize_prompt)
+            if hasattr(response, 'content'):
+                rewritten = response.content.strip().strip('"')
+            else:
+                rewritten = str(response).strip().strip('"')
+            
+            if rewritten and len(rewritten) > 5:
+                print(f"🔄 Query contextualized: '{question}' → '{rewritten}'")
+                return rewritten
+        except Exception as e:
+            print(f"Warning: Query contextualization failed: {e}")
+        
+        return question
+    
     def chat(
         self,
         question: str,
@@ -491,17 +585,65 @@ Translation:"""
         Returns:
             Dictionary with answer, sources, and memory info
         """
+        # Use LangGraph for better conversation handling if enabled
+        if USE_LANGGRAPH:
+            try:
+                from app.services.langgraph_rag import get_langgraph_service
+                langgraph_service = get_langgraph_service()
+                return langgraph_service.chat(
+                    question=question,
+                    chat_history=chat_history,
+                    k=k,
+                    use_memory=use_memory,
+                    store_in_memory=store_in_memory,
+                    user_id=user_id,
+                    session_id=session_id,
+                )
+            except Exception as e:
+                print(f"⚠️ LangGraph service failed, falling back to legacy: {e}")
+        
+        # Legacy implementation (fallback)
+        return self._legacy_chat(
+            question=question,
+            chat_history=chat_history,
+            k=k,
+            use_memory=use_memory,
+            store_in_memory=store_in_memory,
+            user_id=user_id,
+            session_id=session_id,
+        )
+    
+    def _legacy_chat(
+        self,
+        question: str,
+        chat_history: Optional[List] = None,
+        k: int = 5,
+        use_memory: bool = True,
+        store_in_memory: bool = True,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> dict:
+        """
+        Legacy chat implementation (kept as fallback).
+        Now includes query contextualization for better follow-up handling.
+        """
         import time
         from concurrent.futures import ThreadPoolExecutor
         total_start = time.time()
         
+        # NEW: Contextualize the query if it's a follow-up
+        search_query = question
+        if chat_history and self._is_followup_question(question, chat_history):
+            search_query = self._contextualize_query(question, chat_history)
+        
         # Helper functions for parallel execution
         def do_vector_search():
-            return self.vector_store.similarity_search(question, k=k)
+            # Use contextualized query for better retrieval
+            return self.vector_store.similarity_search(search_query, k=k)
         
         def do_memory_search():
             if use_memory and self.memory:
-                return self.memory.get_memory_context(question, k=2, user_id=user_id)
+                return self.memory.get_memory_context(search_query, k=2, user_id=user_id)
             return ""
         
         # Step 1+2: Run vector search and memory search in PARALLEL

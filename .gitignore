@@ -132,3 +132,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Project-specific files
+FIC-CSI-EN-2025.pdf
+PDF complet de CSI.pdf
+test_followup.py
+test_kyc_questions.py
+

@@ -1,5 +1,5 @@
 """
-Speech-to-Text API endpoint
+Speech-to-Text API endpoint using OpenAI gpt-4o-transcribe
 """
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import JSONResponse
@@ -7,7 +7,7 @@ from typing import Optional
 
 router = APIRouter()
 
-# Lazy load speech service to avoid loading model on startup
+# Lazy load speech service
 _speech_service = None
 
 
@@ -16,14 +16,12 @@ def get_speech():
     global _speech_service
     if _speech_service is None:
         from app.services.speech import get_speech_service
-        from app.core.config import settings
         print("\n" + "=" * 60)
         print("🎤 LOADING SPEECH-TO-TEXT SERVICE (First Use)")
         print("=" * 60)
-        print(f"Model: {settings.WHISPER_MODEL}")
-        print("Note: First time may download the model (this can take a few minutes)")
+        print("Model: OpenAI gpt-4o-transcribe")
         print("")
-        _speech_service = get_speech_service(model_size=settings.WHISPER_MODEL)
+        _speech_service = get_speech_service()
         print("")
         print("=" * 60)
         print("✓ Speech-to-Text service ready!")
@@ -34,13 +32,13 @@ def get_speech():
 @router.post("/transcribe")
 async def transcribe_audio(
     audio: UploadFile = File(...),
-    language: Optional[str] = Form(default="en"),
+    language: Optional[str] = Form(default=None),
 ):
     """
-    Transcribe audio file to text.
+    Transcribe audio file to text using OpenAI gpt-4o-transcribe.
     
     - **audio**: Audio file (supports webm, wav, mp3, m4a, etc.)
-    - **language**: Language code (default: 'en')
+    - **language**: Optional language code (e.g., 'en', 'fr'). Auto-detects if not provided.
     
     Returns transcribed text.
     """
@@ -60,11 +58,15 @@ async def transcribe_audio(
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Speech service not available: {str(e)}. Model may still be loading."
+                detail=f"Speech service not available: {str(e)}"
             )
         
+        # Get file extension from filename
+        filename = audio.filename or "recording.webm"
+        extension = filename.rsplit('.', 1)[-1] if '.' in filename else "webm"
+        
         # Transcribe
-        result = speech_service.transcribe(audio_data, language=language)
+        result = speech_service.transcribe(audio_data, language=language, file_extension=extension)
         
         if not result["success"]:
             raise HTTPException(
@@ -76,7 +78,6 @@ async def transcribe_audio(
             "success": True,
             "text": result["text"],
             "language": result.get("language"),
-            "duration": result.get("duration"),
         }
         
     except HTTPException:
@@ -95,12 +96,11 @@ async def speech_health():
         speech_service = get_speech()
         return {
             "status": "healthy",
-            "model": speech_service.model_size,
-            "initialized": speech_service.model is not None,
+            "model": "gpt-4o-transcribe",
+            "initialized": speech_service.client is not None,
         }
     except Exception as e:
         return {
             "status": "unavailable",
             "error": str(e),
         }
-
