@@ -84,13 +84,16 @@ jobs:
           if [ "$OS" = "amzn" ] || [ "$OS" = "rhel" ] || [ "$OS" = "centos" ]; then
             # Amazon Linux / RHEL / CentOS
             sudo yum update -y
-            sudo yum install -y git python3.11 python3.11-pip python3.11-devel gcc gcc-c++ make cmake nginx openssl
+            sudo yum install -y git python3.11 python3.11-pip python3.11-devel gcc gcc-c++ make cmake nginx openssl augeas-libs
+            # Install certbot via pip (most reliable on AL2023)
+            sudo pip3 install certbot certbot-nginx 2>/dev/null || echo "⚠️  Certbot pip install failed, trying yum..."
+            sudo yum install -y certbot python3-certbot-nginx 2>/dev/null || echo "⚠️  Certbot yum install failed"
             # Try to install ffmpeg if available
             sudo yum install -y ffmpeg ffmpeg-devel 2>/dev/null || echo "⚠️  ffmpeg not available in default repos, skipping"
           elif [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
             # Ubuntu / Debian
             sudo apt-get update -y
-            sudo apt-get install -y git python3.11 python3.11-venv python3.11-dev python3-pip build-essential gcc g++ make cmake nginx openssl
+            sudo apt-get install -y git python3.11 python3.11-venv python3.11-dev python3-pip build-essential gcc g++ make cmake nginx openssl certbot python3-certbot-nginx
             sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev 2>/dev/null || echo "⚠️  ffmpeg installation failed, continuing"
           else
             echo "⚠️  Unknown OS, trying to install basic packages..."
@@ -148,8 +151,8 @@ jobs:
           ALGORITHM=HS256
           ACCESS_TOKEN_EXPIRE_MINUTES=30
           
-          # CORS (includes HTTPS for microphone access)
-          BACKEND_CORS_ORIGINS=["https://$EC2_IP_FOR_CORS","http://localhost:3000","http://localhost:8005"]
+          # CORS (includes HTTPS domain for microphone access)
+          BACKEND_CORS_ORIGINS=["https://api.onlinece.ca","https://$EC2_IP_FOR_CORS","http://localhost:3000","http://localhost:8005"]
           
           # Logging
           LOG_LEVEL=INFO
@@ -233,54 +236,19 @@ jobs:
           WantedBy=multi-user.target
           SERVICE_EOF
           
-          # Set up SSL/HTTPS with Nginx
-          echo "🔒 Setting up SSL/HTTPS with Nginx..."
+          # Set up SSL/HTTPS with Nginx + Certbot (api.onlinece.ca)
+          DOMAIN="api.onlinece.ca"
+          echo "🔒 Setting up SSL/HTTPS with Nginx + Certbot for $DOMAIN..."
           
-          # Get EC2 public IP
-          EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "localhost")
+          # Remove default nginx config if it exists (conflicts with port 80)
+          sudo rm -f /etc/nginx/conf.d/default.conf
           
-          # Create SSL directory and generate self-signed certificate
-          sudo mkdir -p /etc/nginx/ssl
-          if [ ! -f /etc/nginx/ssl/lms-bot.crt ]; then
-            echo "🔐 Generating self-signed SSL certificate..."
-            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-              -keyout /etc/nginx/ssl/lms-bot.key \
-              -out /etc/nginx/ssl/lms-bot.crt \
-              -subj "/C=US/ST=State/L=City/O=LMS Bot/CN=$EC2_IP" 2>/dev/null || echo "⚠️  Certificate generation failed, continuing..."
-            sudo chmod 600 /etc/nginx/ssl/lms-bot.key
-            sudo chmod 644 /etc/nginx/ssl/lms-bot.crt
-          else
-            echo "✅ SSL certificate already exists"
-          fi
-          
-          # Create Nginx configuration
-          echo "📝 Creating Nginx configuration..."
-          # Use _ as catch-all server_name (valid for IP-based access)
+          # Step 1: Create initial HTTP-only Nginx config (needed for Certbot verification)
+          echo "📝 Creating initial Nginx configuration for $DOMAIN..."
           sudo tee /etc/nginx/conf.d/lms-bot.conf > /dev/null << 'NGINX_EOF'
-          # HTTP to HTTPS redirect
           server {
               listen 80;
-              server_name _;
-              return 301 https://$host$request_uri;
-          }
-          
-          # HTTPS server
-          server {
-              listen 443 ssl http2;
-              server_name _;
-              
-              ssl_certificate /etc/nginx/ssl/lms-bot.crt;
-              ssl_certificate_key /etc/nginx/ssl/lms-bot.key;
-              ssl_protocols TLSv1.2 TLSv1.3;
-              ssl_ciphers HIGH:!aNULL:!MD5;
-              ssl_prefer_server_ciphers on;
-              ssl_session_cache shared:SSL:10m;
-              ssl_session_timeout 10m;
-              
-              add_header Strict-Transport-Security "max-age=31536000" always;
-              add_header X-Frame-Options "SAMEORIGIN" always;
-              add_header X-Content-Type-Options "nosniff" always;
-              add_header X-XSS-Protection "1; mode=block" always;
+              server_name api.onlinece.ca;
               
               client_max_body_size 10M;
               
@@ -313,12 +281,30 @@ jobs:
           }
           NGINX_EOF
           
-          # Test Nginx configuration
+          # Test and start Nginx with HTTP config
           sudo nginx -t || echo "⚠️  Nginx configuration test failed"
-          
-          # Start and enable Nginx
           sudo systemctl enable nginx
           sudo systemctl restart nginx || echo "⚠️  Nginx restart failed"
+          
+          # Step 2: Run Certbot to get real SSL certificate
+          echo "🔐 Running Certbot for $DOMAIN..."
+          if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+            echo "✅ SSL certificate already exists for $DOMAIN, attempting renewal..."
+            sudo certbot renew --quiet --non-interactive || echo "⚠️  Renewal not needed or failed"
+            # Re-apply nginx plugin to ensure config is correct
+            sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@onlinece.ca --redirect --keep-until-expiring || echo "⚠️  Certbot reconfigure failed"
+          else
+            echo "🆕 Getting new SSL certificate for $DOMAIN..."
+            sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@onlinece.ca --redirect || echo "⚠️  Certbot failed - check DNS and try again"
+          fi
+          
+          # Step 3: Set up auto-renewal cron job
+          echo "🔄 Setting up certificate auto-renewal..."
+          (sudo crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | sudo crontab -
+          
+          # Step 4: Verify final Nginx config and restart
+          sudo nginx -t || echo "⚠️  Nginx configuration test failed after Certbot"
+          sudo systemctl reload nginx || sudo systemctl restart nginx || echo "⚠️  Nginx restart failed"
           
           # Configure firewall (if firewalld is running)
           if systemctl is-active --quiet firewalld; then
@@ -372,18 +358,16 @@ jobs:
           fi
           
           echo ""
-          EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'EC2_IP')
           echo "🌐 Application is available at:"
-          echo "   - HTTPS: https://$EC2_IP (recommended - microphone will work)"
-          echo "   - HTTP:  http://$EC2_IP:8005 (direct, microphone won't work)"
+          echo "   - HTTPS: https://api.onlinece.ca (recommended - microphone will work)"
+          echo "   - HTTP:  http://api.onlinece.ca:8005 (direct, microphone won't work)"
+          echo ""
+          echo "🔐 SSL Certificate: Let's Encrypt (auto-renewing via Certbot)"
           echo ""
           echo "⚠️  IMPORTANT: Make sure your EC2 Security Group allows inbound traffic on:"
           echo "   - Port 443 (HTTPS) - Type: HTTPS, Source: 0.0.0.0/0"
           echo "   - Port 80 (HTTP redirect) - Type: HTTP, Source: 0.0.0.0/0"
           echo "   - Port 8005 (optional, direct access) - Type: Custom TCP, Source: 0.0.0.0/0"
-          echo ""
-          echo "📝 Note: HTTPS uses a self-signed certificate. Browsers will show a security warning."
-          echo "   Click 'Advanced' → 'Proceed to site' to accept it."
           DEPLOY_SCRIPT
 
       - name: Health Check
@@ -393,6 +377,6 @@ jobs:
           echo "⏳ Waiting for application to start..."
           sleep 15
           echo "🏥 Checking application health..."
-          echo "📍 Attempting to connect to https://${{ secrets.EC2_HOST }}/health (HTTPS)"
-          curl -k -v --max-time 10 --connect-timeout 5 https://${{ secrets.EC2_HOST }}/health && echo "✅ HTTPS health check passed!" || echo "⚠️  HTTPS health check failed, trying HTTP..."
+          echo "📍 Attempting to connect to https://api.onlinece.ca/health (HTTPS)"
+          curl -v --max-time 10 --connect-timeout 5 https://api.onlinece.ca/health && echo "✅ HTTPS health check passed!" || echo "⚠️  HTTPS health check failed, trying HTTP..."
           curl -v --max-time 10 --connect-timeout 5 http://${{ secrets.EC2_HOST }}:8005/health && echo "✅ HTTP health check passed!" || echo "⚠️  Health check failed - Check: 1) Security group allows ports 443/80, 2) Service logs for errors, 3) Application is running"
