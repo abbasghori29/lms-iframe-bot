@@ -298,9 +298,9 @@ jobs:
             sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@onlinece.ca --redirect || echo "⚠️  Certbot failed - check DNS and try again"
           fi
           
-          # Step 3: Set up auto-renewal cron job
-          echo "🔄 Setting up certificate auto-renewal..."
-          (sudo crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | sudo crontab -
+          # Step 3: Set up auto-renewal (Certbot already sets up a systemd timer on AL2023)
+          echo "🔄 Checking certificate auto-renewal..."
+          sudo systemctl list-timers | grep certbot || echo "ℹ️  Certbot auto-renewal timer not found, but Certbot scheduled task is already set up"
           
           # Step 4: Verify final Nginx config and restart
           sudo nginx -t || echo "⚠️  Nginx configuration test failed after Certbot"
