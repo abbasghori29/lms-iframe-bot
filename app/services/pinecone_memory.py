@@ -2,6 +2,7 @@
 Pinecone-based Memory Service using LangChain's PineconeVectorStore.
 Stores chat conversations with per-user metadata filtering.
 """
+import asyncio
 import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -338,6 +339,141 @@ class PineconeMemoryService:
         
         return conversations
     
+    # ── Async versions — used by the async LangGraph nodes ──────────────
+
+    async def asearch_similar(
+        self,
+        query: str,
+        k: int = 3,
+        user_id: Optional[str] = None,
+        include_global: bool = False,
+    ) -> List[Dict]:
+        """Async version of search_similar — runs Pinecone call off the event loop."""
+        filter_dict = None
+        if user_id and not include_global:
+            filter_dict = {"user_id": {"$eq": user_id}}
+
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(
+            None,
+            lambda: self.vector_store.similarity_search_with_score(
+                query=query, k=k, filter=filter_dict,
+            ),
+        )
+
+        conversations = []
+        for doc, score in results:
+            conversations.append({
+                "question": doc.metadata.get("question", ""),
+                "answer": doc.metadata.get("answer", ""),
+                "score": float(score),
+                "timestamp": doc.metadata.get("timestamp", ""),
+                "user_id": doc.metadata.get("user_id", "anonymous"),
+                "session_id": doc.metadata.get("session_id", ""),
+            })
+        return conversations
+
+    async def aget_recent_session_context(
+        self,
+        user_id: str,
+        session_id: str,
+        limit: int = 3,
+    ) -> List[Dict]:
+        """Async version of get_recent_session_context."""
+        try:
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(
+                None,
+                lambda: self.vector_store.similarity_search(
+                    query="",
+                    k=limit * 2,
+                    filter={
+                        "$and": [
+                            {"user_id": {"$eq": user_id}},
+                            {"session_id": {"$eq": session_id}},
+                        ]
+                    },
+                ),
+            )
+
+            conversations = []
+            for doc in results:
+                conversations.append({
+                    "id": doc.metadata.get("conv_id", ""),
+                    "question": doc.metadata.get("question", ""),
+                    "answer": doc.metadata.get("answer", ""),
+                    "timestamp": doc.metadata.get("timestamp", ""),
+                })
+            conversations.sort(key=lambda x: x.get("timestamp", ""))
+            return conversations[-limit:] if len(conversations) > limit else conversations
+        except Exception as e:
+            print(f"Warning: Async recent session context failed: {e}")
+            return []
+
+    async def aget_memory_context(
+        self,
+        query: str,
+        k: int = 2,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> str:
+        """
+        Async get_memory_context — runs session-history and semantic-search
+        **in parallel** via asyncio.gather(), saving 100-300ms per call.
+        """
+        context_parts: List[str] = []
+
+        # ── Launch both Pinecone searches in parallel ──────────────────────
+        async def _recent() -> List[Dict]:
+            if session_id and user_id:
+                return await self.aget_recent_session_context(user_id, session_id, limit=3)
+            return []
+
+        async def _similar() -> List[Dict]:
+            return await self.asearch_similar(query, k=k, user_id=user_id, include_global=False)
+
+        recent, similar = await asyncio.gather(_recent(), _similar())
+
+        # Format recent session context
+        if recent:
+            context_parts.append("Recent conversation in this session:")
+            for i, conv in enumerate(recent, 1):
+                context_parts.append(
+                    f"\n[Recent {i}]\n"
+                    f"You asked: {conv['question']}\n"
+                    f"I answered: {conv['answer'][:400]}..."
+                )
+
+        # If not enough user results, fetch global (one more round-trip)
+        if len(similar) < k and user_id:
+            global_similar = await self.asearch_similar(
+                query, k=k - len(similar), include_global=True
+            )
+            similar.extend(global_similar)
+
+        if similar:
+            if context_parts:
+                context_parts.append("\nRelated past conversations:")
+            else:
+                context_parts.append("Previous relevant conversations:")
+
+            for i, conv in enumerate(similar, 1):
+                if conv["score"] > 0.5:
+                    is_own = (
+                        " (from your history)"
+                        if user_id and conv.get("user_id") == user_id
+                        else ""
+                    )
+                    context_parts.append(
+                        f"\n[Past Q&A {i}{is_own}]\n"
+                        f"User asked: {conv['question']}\n"
+                        f"Answer: {conv['answer'][:300]}..."
+                    )
+
+        if not context_parts:
+            return ""
+        return "\n".join(context_parts)
+
     def get_stats(self) -> Dict:
         """Get memory statistics"""
         stats = self.index.describe_index_stats()

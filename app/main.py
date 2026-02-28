@@ -1,9 +1,15 @@
 """
 Main FastAPI application entry point
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -16,6 +22,12 @@ from app.core.exceptions import (
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.router import api_router
+
+# ── Rate limiter (shared across the whole app) ────────────────────────────────
+# Each unique IP address is limited to 30 chat requests per minute.
+# Burst traffic beyond that gets a clear 429 response instead of crashing the
+# server or exhausting OpenAI quota.
+limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
 
 
 @asynccontextmanager
@@ -42,12 +54,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Attach limiter to app state so @limiter.limit() decorators work
+app.state.limiter = limiter
+
 # Exception handlers
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS Middleware
+# Middlewares (order matters — CORSMiddleware must wrap SlowAPI)
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -56,6 +72,8 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+app.add_middleware(SlowAPIMiddleware)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)

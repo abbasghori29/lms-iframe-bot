@@ -138,3 +138,24 @@ PDF complet de CSI.pdf
 test_followup.py
 test_kyc_questions.py
 
+# Frontend / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.turbo/
+frontend/.vercel/
+frontend/.swc/
+
+# Frontend environment files
+frontend/.env*.local
+frontend/.env.local
+
+# Docker
+docker-compose.override.yml
+
+# Docker volumes and data (if any)
+docker-data/
+.docker/
+

@@ -2,6 +2,7 @@
 Memory service using FAISS for storing and retrieving past Q&A pairs.
 Supports per-user memory isolation for anonymous users.
 """
+import asyncio
 import os
 import json
 from typing import List, Optional, Dict, Any
@@ -410,6 +411,26 @@ class MemoryService:
         
         return "\n".join(context_parts)
     
+    async def aget_memory_context(
+        self,
+        query: str,
+        k: int = 2,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> str:
+        """
+        Async wrapper around get_memory_context.
+        FAISS is CPU-bound / file-I/O, so we offload to the thread-pool
+        to keep the event loop free.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.get_memory_context(
+                query, k=k, user_id=user_id, session_id=session_id,
+            ),
+        )
+
     def save(self):
         """Save memory index and metadata to disk"""
         os.makedirs(self.MEMORY_PATH, exist_ok=True)
