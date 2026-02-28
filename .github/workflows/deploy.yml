@@ -301,26 +301,29 @@ jobs:
           # Stop and remove existing container if it exists
           docker-compose down 2>/dev/null || true
           
-          # Build and start frontend container
-          # Try docker-compose build first, fallback to docker build + run if it fails
-          if docker buildx version &> /dev/null && docker-compose build --no-cache 2>&1; then
-            echo "✅ Frontend image built successfully with docker-compose"
-            docker-compose up -d
-          else
-            echo "⚠️  docker-compose build failed or buildx unavailable, using docker build directly..."
-            docker build -t cafs-frontend:latest --build-arg NEXT_PUBLIC_API_URL=/api -f Dockerfile .
-            # Stop and remove existing container
-            docker stop cafs-frontend 2>/dev/null || true
-            docker rm cafs-frontend 2>/dev/null || true
-            # Run the container
-            docker run -d \
-              --name cafs-frontend \
-              --restart unless-stopped \
-              -p 3000:3000 \
-              -e NODE_ENV=production \
-              -e NEXT_PUBLIC_API_URL=/api \
-              cafs-frontend:latest
+          # Verify src directory exists before building
+          if [ ! -d "src" ]; then
+            echo "❌ ERROR: src directory not found in $APP_DIR/frontend"
+            ls -la
+            exit 1
           fi
+          
+          # Build and start frontend container
+          echo "🔨 Building frontend Docker image..."
+          docker build -t cafs-frontend:latest --build-arg NEXT_PUBLIC_API_URL=/api -f Dockerfile .
+          
+          # Stop and remove existing container
+          docker stop cafs-frontend 2>/dev/null || true
+          docker rm cafs-frontend 2>/dev/null || true
+          
+          # Run the container
+          docker run -d \
+            --name cafs-frontend \
+            --restart unless-stopped \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e NEXT_PUBLIC_API_URL=/api \
+            cafs-frontend:latest
           
           # Wait for frontend to be ready
           echo "⏳ Waiting for frontend to start..."
