@@ -14,6 +14,9 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy all files (tsconfig.json and src/ are included)
+# .dockerignore will exclude node_modules, .next, etc.
 COPY . .
 
 # Set build-time environment variable for API URL
