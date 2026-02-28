@@ -160,6 +160,20 @@ jobs:
           docker --version
           docker-compose --version
           
+          # Install Docker buildx (required for docker-compose build)
+          echo "🔧 Setting up Docker buildx..."
+          if ! docker buildx version &> /dev/null; then
+            mkdir -p ~/.docker/cli-plugins /usr/local/lib/docker/cli-plugins
+            BUILDX_VERSION="v0.17.0"
+            curl -SL "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64" -o ~/.docker/cli-plugins/docker-buildx
+            sudo cp ~/.docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+            chmod +x ~/.docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+            docker buildx install 2>/dev/null || echo "⚠️  Buildx install command failed, but plugin should work"
+            docker buildx version || echo "⚠️  Buildx check failed, will use fallback"
+          else
+            echo "✅ Docker buildx already available"
+          fi
+          
           # Create directory if it doesn't exist
           if [ ! -d "$APP_DIR" ]; then
             echo "📁 Creating application directory: $APP_DIR"
@@ -288,8 +302,25 @@ jobs:
           docker-compose down 2>/dev/null || true
           
           # Build and start frontend container
-          docker-compose build --no-cache
-          docker-compose up -d
+          # Try docker-compose build first, fallback to docker build + run if it fails
+          if docker buildx version &> /dev/null && docker-compose build --no-cache 2>&1; then
+            echo "✅ Frontend image built successfully with docker-compose"
+            docker-compose up -d
+          else
+            echo "⚠️  docker-compose build failed or buildx unavailable, using docker build directly..."
+            docker build -t cafs-frontend:latest --build-arg NEXT_PUBLIC_API_URL=/api -f Dockerfile .
+            # Stop and remove existing container
+            docker stop cafs-frontend 2>/dev/null || true
+            docker rm cafs-frontend 2>/dev/null || true
+            # Run the container
+            docker run -d \
+              --name cafs-frontend \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e NODE_ENV=production \
+              -e NEXT_PUBLIC_API_URL=/api \
+              cafs-frontend:latest
+          fi
           
           # Wait for frontend to be ready
           echo "⏳ Waiting for frontend to start..."
