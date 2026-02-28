@@ -19,6 +19,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # .dockerignore will exclude node_modules, .next, etc.
 COPY . .
 
+# Debug: Verify files are copied (remove after fixing)
+RUN ls -la src/lib/ || echo "src/lib not found"
+
 # Set build-time environment variable for API URL
 # This must be set at build time for Next.js to embed it in the bundle
 ARG NEXT_PUBLIC_API_URL=/api
