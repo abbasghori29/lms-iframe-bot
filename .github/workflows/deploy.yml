@@ -310,7 +310,7 @@ jobs:
           
           # Build and start frontend container
           echo "🔨 Building frontend Docker image..."
-          docker build -t cafs-frontend:latest --build-arg NEXT_PUBLIC_API_URL=/api -f Dockerfile .
+          docker build -t cafs-frontend:latest --build-arg NEXT_PUBLIC_API_URL= -f Dockerfile .
           
           # Stop and remove existing container
           docker stop cafs-frontend 2>/dev/null || true
@@ -322,7 +322,7 @@ jobs:
             --restart unless-stopped \
             -p 3000:3000 \
             -e NODE_ENV=production \
-            -e NEXT_PUBLIC_API_URL=/api \
+            -e NEXT_PUBLIC_API_URL= \
             cafs-frontend:latest
           
           # Wait for frontend to be ready

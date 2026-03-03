@@ -17,7 +17,7 @@ COPY next.config.mjs tsconfig.json postcss.config.mjs ./
 COPY src ./src
 
 # Set build-time environment variable
-ARG NEXT_PUBLIC_API_URL=/api
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build Next.js
