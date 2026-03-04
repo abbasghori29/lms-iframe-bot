@@ -36,7 +36,7 @@ export default function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               <Sparkles size={14} className="text-white" />
             </div>
             <h1 className="text-base font-bold text-brand-800 tracking-tight">
-              CAFS OnlineCE Assistant
+              Chatbot ACSF / CAFS
             </h1>
           </div>
         </div>

@@ -247,7 +247,7 @@ export default function ChatInput({ onSend, isLoading }: ChatInputProps) {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={image ? "Add a message about this image…" : "Ask a question… or paste/drop an image"}
+            placeholder={image ? "Add a message about this image…" : "Quelle est votre question? What is your question?"}
             rows={1}
             disabled={isLoading}
             className="
@@ -298,10 +298,9 @@ export default function ChatInput({ onSend, isLoading }: ChatInputProps) {
                 relative flex-shrink-0 w-9 h-9 rounded-xl
                 flex items-center justify-center
                 transition-all duration-200
-                ${
-                  isTranscribing
-                    ? "bg-brand-100 text-brand-500"
-                    : "bg-cream-100 text-brand-500 hover:bg-cream-200 hover:text-brand-600"
+                ${isTranscribing
+                  ? "bg-brand-100 text-brand-500"
+                  : "bg-cream-100 text-brand-500 hover:bg-cream-200 hover:text-brand-600"
                 }
                 disabled:opacity-40 disabled:cursor-not-allowed
               `}

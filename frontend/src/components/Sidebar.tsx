@@ -100,7 +100,7 @@ export default function Sidebar({
             </div>
             <div>
               <h1 className="text-sm font-bold text-brand-800 tracking-wide uppercase">
-                CAFS OnlineCE
+                ACSF / CAFS
               </h1>
             </div>
           </div>
@@ -136,7 +136,7 @@ export default function Sidebar({
             "
           >
             <Plus size={18} strokeWidth={2.5} />
-            New Chat
+            New/nouveau chat
           </button>
         </div>
 
@@ -149,7 +149,7 @@ export default function Sidebar({
             />
             <input
               type="text"
-              placeholder="Search chats…"
+              placeholder="Search chats"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="
@@ -166,7 +166,7 @@ export default function Sidebar({
         {/* Session List */}
         <div className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-thin">
           <p className="px-2 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-brand-500/70">
-            Your Chats
+            Your chats : Historique
           </p>
 
           {filteredSessions.length === 0 && (
@@ -186,10 +186,9 @@ export default function Sidebar({
                   className={`
                     group relative flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer
                     transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-white/80 shadow-warm border border-cream-300/50"
-                        : "hover:bg-white/50 border border-transparent"
+                    ${isActive
+                      ? "bg-white/80 shadow-warm border border-cream-300/50"
+                      : "hover:bg-white/50 border border-transparent"
                     }
                   `}
                   onClick={() => {
@@ -201,9 +200,8 @@ export default function Sidebar({
                 >
                   <MessageSquare
                     size={16}
-                    className={`flex-shrink-0 ${
-                      isActive ? "text-brand-500" : "text-brand-400"
-                    }`}
+                    className={`flex-shrink-0 ${isActive ? "text-brand-500" : "text-brand-400"
+                      }`}
                   />
 
                   <div className="flex-1 min-w-0">
@@ -240,11 +238,10 @@ export default function Sidebar({
                     ) : (
                       <>
                         <p
-                          className={`text-sm truncate ${
-                            isActive
+                          className={`text-sm truncate ${isActive
                               ? "font-semibold text-brand-800"
                               : "font-medium text-brand-700"
-                          }`}
+                            }`}
                         >
                           {truncateText(session.title, 30)}
                         </p>
@@ -296,7 +293,7 @@ export default function Sidebar({
         {/* Footer */}
         <div className="px-4 py-3 border-t border-cream-300/60">
           <p className="text-[10px] text-brand-400 text-center">
-            CAFS OnlineCE Assistant v1.0
+            Chatbot ACSF / CAFS v1.0
           </p>
         </div>
       </aside>
