@@ -136,7 +136,7 @@ export default function Sidebar({
             "
           >
             <Plus size={18} strokeWidth={2.5} />
-            New/nouveau chat
+            New / Nouveau chat
           </button>
         </div>
 
@@ -166,7 +166,7 @@ export default function Sidebar({
         {/* Session List */}
         <div className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-thin">
           <p className="px-2 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-brand-500/70">
-            Your chats : Historique
+            Your chats / Historique
           </p>
 
           {filteredSessions.length === 0 && (
@@ -239,8 +239,8 @@ export default function Sidebar({
                       <>
                         <p
                           className={`text-sm truncate ${isActive
-                              ? "font-semibold text-brand-800"
-                              : "font-medium text-brand-700"
+                            ? "font-semibold text-brand-800"
+                            : "font-medium text-brand-700"
                             }`}
                         >
                           {truncateText(session.title, 30)}

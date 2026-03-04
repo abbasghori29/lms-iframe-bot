@@ -66,11 +66,14 @@ function EmptyState() {
       </div>
 
       {/* Welcome Text */}
-      <h2 className="text-2xl font-bold text-brand-800 mb-2 text-center">
-        Bienvenue sur l&apos;assistant virtuel de l&apos;ACSF Welcome to the CAFS Virtual Assistant
+      <h2 className="text-2xl font-bold text-brand-800 mb-4 text-center">
+        Bienvenue sur l&apos;assistant virtuel de l&apos;ACSF / Welcome to the CAFS Virtual Assistant
       </h2>
+      <p className="text-sm text-brand-500 text-center max-w-md leading-relaxed mb-3">
+        Cet assistant virtuel a été conçu pour soutenir les étudiants dans leur étude du cours Fonds d&apos;investissement au Canada. Toutes les réponses sont basées uniquement sur le document PDF officiel du cours. Vous pouvez également déposer des fichiers / capture d&apos;écran.
+      </p>
       <p className="text-sm text-brand-500 text-center max-w-md leading-relaxed">
-        Cet assistant virtuel a été conçu pour soutenir les étudiants dans leur étude du cours Fonds d&apos;investissement au Canada. Toutes les réponses sont basées uniquement sur le document PDF officiel du cours. Vous pouvez également déposer des fichiers / capture d&apos;écran. This virtual assistant was designed to support students in their study of the Investment Funds in Canada course. All responses are based solely on the official course PDF document. You can even drop a screenshot or ask a question
+        This virtual assistant was designed to support students in their study of the Investment Funds in Canada course. All responses are based solely on the official course PDF document. You can even drop a screenshot or ask a question.
       </p>
     </div>
   );
